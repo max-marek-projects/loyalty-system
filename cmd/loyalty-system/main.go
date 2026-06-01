@@ -1,0 +1,67 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/max-marek-projects/loyalty-system/internal/config"
+	"github.com/max-marek-projects/loyalty-system/internal/handlers"
+	"github.com/max-marek-projects/loyalty-system/internal/logger"
+	"github.com/max-marek-projects/loyalty-system/internal/repository"
+	"github.com/max-marek-projects/loyalty-system/internal/server"
+	"github.com/max-marek-projects/loyalty-system/internal/service"
+	"go.uber.org/zap"
+)
+
+// entry point
+func main() {
+	configData := config.LoadConfig()
+	err := logger.Initialize(configData.LoggerLevel)
+	if err != nil {
+		log.Fatalf("Unable to initialize logger: %v", err)
+	}
+	store, err := repository.NewDBStorage(configData.DatabaseUri)
+	if err != nil {
+		log.Fatalf("Unable to create storage: %v", err)
+	}
+	service := service.NewEndpointService(store)
+	handler := handlers.NewHandler(service, configData.MaxParallelWorkers, configData.CookieSecret)
+	srv := server.NewServer(configData.RunAddr, handler, configData.ReadTimeout, configData.WriteTimeout, configData.CookieSecret)
+
+	// create separate goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- srv.ListenAndServe()
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(stop)
+
+	select {
+	case sig := <-stop:
+		logger.Log.Info("Shutdown signal received",
+			zap.String("signal", sig.String()),
+		)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
+			logger.Log.Error("Graceful shutdown failed", zap.Error(err))
+		} else {
+			logger.Log.Info("Server stopped gracefully")
+		}
+
+	case err := <-serverErr:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Log.Fatal("Server stopped with error", zap.Error(err))
+		}
+	}
+}
