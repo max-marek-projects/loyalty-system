@@ -14,4 +14,6 @@ type Storage interface {
 	CheckUser(ctx context.Context, username string) (int64, string, error)
 	AddOrder(ctx context.Context, userID int64, orderNumber string) error
 	GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error)
+	MarkAllProcessingAsNew(ctx context.Context) error
+	FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error)
 }

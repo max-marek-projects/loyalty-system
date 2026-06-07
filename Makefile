@@ -1,6 +1,3 @@
-build:
-	go build -o bin/loyalty-system ./cmd/loyalty-system
-
 test:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out | grep total
@@ -9,7 +6,8 @@ test:
 run-client:
 	go run ./cmd/client/main.go
 
-run-binary:
+run:
+	go build -o bin/loyalty-system ./cmd/loyalty-system
 	./bin/loyalty-system
 
 mocks:

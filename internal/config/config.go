@@ -17,6 +17,7 @@ type Config struct {
 	LoggerLevel          string        `env:"LOGGER_LEVEL"`           // logger level DEBUG / INFO / WARNING / ERROR / FATAL
 	DatabaseUri          string        `env:"DATABASE_URI"`           // database connection url
 	CookieSecret         string        `env:"COOKIE_SECRET"`          // secret for cookie signature
+	MaxParallelWorkers   int           `env:"MAX_PARALLEL_WORKERS"`   // max amount of parallel workers
 	AccrualSystemAddress string        `env:"ACCRUAL_SYSTEM_ADDRESS"` // loyalty calculation system address
 }
 
@@ -37,6 +38,7 @@ func LoadConfig() *Config {
 	flag.StringVar(&config.LoggerLevel, "l", "INFO", "logger level")
 	flag.StringVar(&config.DatabaseUri, "d", "", "database connection url")
 	flag.StringVar(&config.CookieSecret, "s", "", "cookie signing secret")
+	flag.IntVar(&config.MaxParallelWorkers, "p", 5, "maximum amount of parallel workers")
 	flag.StringVar(&config.AccrualSystemAddress, "r", "", "maximum concurrent parallel operations")
 	// read flags to temp vars
 	var readSec, writeSec int

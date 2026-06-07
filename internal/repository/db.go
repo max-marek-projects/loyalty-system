@@ -125,7 +125,7 @@ func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber st
 
 // get all orders by user id
 func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) {
-	query := `SELECT number, status, accrual, uploaded_at FROM orders WHERE user_id = $1`
+	query := `SELECT id, number, status, accrual, uploaded_at FROM orders WHERE user_id = $1`
 	rows, err := dbs.storage.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
@@ -134,7 +134,49 @@ func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.
 	var res []models.OrderData
 	for rows.Next() {
 		var orderData models.OrderData
-		if err := rows.Scan(&orderData.Number, &orderData.Status, &orderData.Accrual, &orderData.UploadedAt); err != nil {
+		if err := rows.Scan(&orderData.Id, &orderData.Number, &orderData.Status, &orderData.Accrual, &orderData.UploadedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, orderData)
+	}
+	return res, nil
+}
+
+// get all orders by user id
+func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error {
+	query := `UPDATE orders
+		SET status = $1,
+			pending = FALSE
+		WHERE status = $2 OR pending = TRUE;
+	`
+	result, err := dbs.storage.ExecContext(ctx, query, models.StatusNEW, models.StatusPROCESSING)
+	if err != nil {
+		return fmt.Errorf("Failed to reset all statuses: %v", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("Could not get affected rows: %v", err)
+	}
+	logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
+	return nil
+}
+
+// find new orders and mark them as pending
+func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error) {
+	query := `UPDATE orders
+		SET pending = TRUE
+		WHERE status = $1 AND pending = FALSE
+		RETURNING id, number, status, accrual, uploaded_at;
+	`
+	rows, err := dbs.storage.QueryContext(ctx, query, models.StatusNEW)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+	}
+	defer rows.Close()
+	var res []models.OrderData
+	for rows.Next() {
+		var orderData models.OrderData
+		if err := rows.Scan(&orderData.Id, &orderData.Number, &orderData.Status, &orderData.Accrual, &orderData.UploadedAt); err != nil {
 			return nil, err
 		}
 		res = append(res, orderData)

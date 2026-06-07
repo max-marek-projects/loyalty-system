@@ -65,7 +65,7 @@ func (t *TimeRFC3339) Scan(value interface{}) error {
 	}
 }
 
-// driver.Valuer to 
+// driver.Valuer to
 func (t TimeRFC3339) Value() (driver.Value, error) {
 	if t.IsZero() {
 		return nil, nil
@@ -74,6 +74,7 @@ func (t TimeRFC3339) Value() (driver.Value, error) {
 }
 
 type OrderData struct {
+	Id         int64       `json:"-"`
 	Number     string      `json:"number"`
 	Status     OrderStatus `json:"status"`
 	Accrual    int64       `json:"accrual"`

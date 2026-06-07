@@ -28,9 +28,13 @@ func main() {
 	}
 	store, err := repository.NewDBStorage(configData.DatabaseUri)
 	if err != nil {
-		log.Fatalf("Unable to create storage: %v", err)
+		logger.Log.Fatal("Unable to create storage", zap.Error(err))
 	}
-	service := service.NewEndpointService(store)
+	service, err := service.NewEndpointService(store, configData.AccrualSystemAddress)
+	if err != nil {
+		logger.Log.Fatal("Unable to create service", zap.Error(err))
+	}
+	// go service.StartOrderProcessor(context.Background(), configData.MaxParallelWorkers)
 	handler := handlers.NewHandler(service, configData.MaxParallelWorkers, configData.CookieSecret)
 	srv := server.NewServer(configData.RunAddr, handler, configData.ReadTimeout, configData.WriteTimeout, configData.CookieSecret)
 
