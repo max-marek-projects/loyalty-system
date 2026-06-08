@@ -2,12 +2,22 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"sync"
+	"time"
 
+	"math/rand/v2"
+
+	"github.com/max-marek-projects/loyalty-system/internal/logger"
 	"github.com/max-marek-projects/loyalty-system/internal/models"
 	"github.com/max-marek-projects/loyalty-system/internal/repository"
 	"github.com/max-marek-projects/loyalty-system/internal/utils"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,11 +27,14 @@ type Service interface {
 	LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
 	AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error)
 	GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error)
-	// StartOrderProcessor(ctx context.Context, maxParallelWorkers int)
+	GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error)
+	Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error
+	GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error)
+	StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool)
 }
 
 func NewEndpointService(storage repository.Storage, accrualSystemAddress string) (Service, error) {
-	service := &endpointService{storage: storage, accrualSystemAddress: accrualSystemAddress}
+	service := &endpointService{storage: storage, accrualSystemAddress: accrualSystemAddress, httpClient: &http.Client{Timeout: 10 * time.Second}}
 	err := service.storage.MarkAllProcessingAsNew(context.Background())
 	if err != nil {
 		return nil, err
@@ -32,6 +45,7 @@ func NewEndpointService(storage repository.Storage, accrualSystemAddress string)
 type endpointService struct {
 	storage              repository.Storage
 	accrualSystemAddress string
+	httpClient           *http.Client
 }
 
 // register user in service
@@ -43,7 +57,7 @@ func (service *endpointService) RegisterUser(ctx context.Context, userData model
 	hashedUserData := models.UserData{Login: userData.Login, PasswordHash: string(hashed)}
 	userID, err := service.storage.RegisterUser(ctx, hashedUserData)
 	if err != nil {
-		if errors.Is(err, repository.ErrorAlreadyInStorage) {
+		if errors.Is(err, repository.ErrAlreadyInStorage) {
 			return 0, ErrorLoginAlreadyTaken
 		}
 		return 0, fmt.Errorf("Failed to register user in storage: %v", err)
@@ -55,7 +69,7 @@ func (service *endpointService) RegisterUser(ctx context.Context, userData model
 func (service *endpointService) LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error) {
 	userID, hashedPassword, err := service.storage.CheckUser(ctx, userData.Login)
 	if err != nil {
-		if errors.Is(err, repository.ErrorUserNotFound) {
+		if errors.Is(err, repository.ErrUserNotFound) {
 			return 0, ErrorWrongUsernamePassword
 		}
 		return 0, fmt.Errorf("Failed to check user in storage: %v", err)
@@ -75,10 +89,10 @@ func (service *endpointService) AddOrder(ctx context.Context, userID int64, orde
 	}
 	err := service.storage.AddOrder(ctx, userID, orderNumber)
 	if err != nil {
-		if errors.Is(err, repository.ErrorAlreadyInStorage) {
+		if errors.Is(err, repository.ErrAlreadyInStorage) {
 			return false, nil
 		}
-		if errors.Is(err, repository.ErrorStorageConflict) {
+		if errors.Is(err, repository.ErrStorageConflict) {
 			return false, ErrorOrdersConflict
 		}
 		return false, fmt.Errorf("Failed to check user in storage: %v", err)
@@ -86,7 +100,7 @@ func (service *endpointService) AddOrder(ctx context.Context, userID int64, orde
 	return true, nil
 }
 
-// add new order
+// get all orders
 func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) {
 	orders, err := service.storage.GetAllOrders(ctx, userID)
 	if err != nil {
@@ -95,135 +109,199 @@ func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) 
 	return orders, nil
 }
 
+// get balance by user id
+func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) {
+	balance, err := service.storage.GetBalance(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get balance from storage: %v", err)
+	}
+	return balance, nil
+}
+
+// get balance by user id
+func (service *endpointService) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error {
+	numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
+	if !numberValid {
+		return ErrorNumberNotValid
+	}
+	err := service.storage.Withdraw(ctx, userID, orderNumber, sum)
+	if err != nil {
+		if errors.Is(err, repository.ErrInsufficientFunds) {
+			return ErrInsufficientFunds
+		}
+		return fmt.Errorf("Failed to withdraw in storage: %v", err)
+	}
+	return nil
+}
+
+// get all user withdrawals
+func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) {
+	withdrawals, err := service.storage.GetAllWithdrawals(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get orders from storage: %v", err)
+	}
+	return withdrawals, nil
+}
+
 // poll storage, find new orders and start jobs to handle them
-// func (service *endpointService) StartOrderProcessor(ctx context.Context, maxParallelWorkers int) {
-// 	// Channel for orders to be processed
-// 	orderCh := make(chan models.OrderData, maxParallelWorkers)
-// 	var wg sync.WaitGroup
-// 	for i := 0; i < maxParallelWorkers; i++ {
-// 		wg.Add(1)
-// 		go service.worker(ctx, &wg, orderCh)
-// 	}
-// 	ticker := time.NewTicker(5 * time.Second)
-// 	defer ticker.Stop()
-// 	logger.Log.Info("Order processor started", zap.Int("parallelWorkers", maxParallelWorkers), zap.String("accrualSystem", service.accrualSystemAddress))
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			log.Println("Order processor shutting down...")
-// 			close(orderCh)
-// 			wg.Wait()
-// 			logger.Log.Info("Order processor stopped.")
-// 			return
-// 		case <-ticker.C:
-// 			orders, err := service.storage.FindAndClaimNewOrders(ctx)
-// 			if err != nil {
-// 				logger.Log.Error("Failed to fetch new orders", zap.Error(err))
-// 				continue
-// 			}
-// 			if len(orders) == 0 {
-// 				continue
-// 			}
-// 			for _, order := range orders {
-// 				select {
-// 				case orderCh <- order:
-// 				case <-ctx.Done():
-// 					close(orderCh)
-// 					wg.Wait()
-// 					return
-// 				}
-// 			}
-// 		}
-// 	}
-// }
+func (service *endpointService) StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool) {
+	// Channel for orders to be processed
+	orderCh := make(chan models.OrderQueue, maxParallelWorkers*2)
+	// wait group for all workers to properly finish before exit
+	var wg sync.WaitGroup
+	for i := 0; i < maxParallelWorkers; i++ {
+		wg.Add(1)
+		go service.worker(ctx, &wg, orderCh, pollInterval, mockExternalService)
+	}
+	// ticker to parse new orders
+	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer ticker.Stop()
+	logger.Log.Info("Order processor started", zap.Int("parallelWorkers", maxParallelWorkers), zap.String("accrualSystem", service.accrualSystemAddress))
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Order processor shutting down...")
+			close(orderCh)
+			wg.Wait()
+			logger.Log.Info("Order processor stopped.")
+			return
+		case <-ticker.C:
+			orders, err := service.storage.FindAndClaimNewOrders(ctx)
+			if err != nil {
+				logger.Log.Error("Failed to fetch new orders", zap.Error(err))
+				continue
+			}
+			if len(orders) == 0 {
+				continue
+			}
+			for _, order := range orders {
+				orderQueueItem := models.OrderQueue{Order: order, NextAttemptAt: time.Now()}
+				select {
+				case orderCh <- orderQueueItem:
+				case <-ctx.Done():
+					close(orderCh)
+					wg.Wait()
+					return
+				}
+			}
+		}
+	}
+}
 
 // worker processes orders from the channel by calling the accrual system.
-// func (service *endpointService) worker(
-// 	ctx context.Context,
-// 	wg *sync.WaitGroup,
-// 	orderCh <-chan models.OrderData,
-// ) {
-// 	defer wg.Done()
+func (service *endpointService) worker(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	orderCh chan models.OrderQueue,
+	pollInterval int,
+	mockExternalService bool,
+) {
+	defer wg.Done()
+	for orderQueueItem := range orderCh {
+		result, err := service.parseAccrualSystem(ctx, orderQueueItem, orderCh, pollInterval, mockExternalService)
+		if errors.Is(err, ErrorOrderNotYetProcessed) {
+			continue
+		}
+		if err != nil {
+			log.Printf("Failed to process order %d: %v", orderQueueItem.Order.Id, err)
+			// Update order status to "failed" (optional, with error message)
+			if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.Order.Id, models.StatusINVALID); updateErr != nil {
+				log.Printf("Failed to update order %d status: %v", orderQueueItem.Order.Id, updateErr)
+			}
+			continue
+		}
+		if result.Status == models.ExternalStatusINVALID {
+			if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.Order.Id, models.StatusINVALID); updateErr != nil {
+				log.Printf("Failed to update order %d status: %v", orderQueueItem.Order.Id, updateErr)
+			}
+			continue
+		}
+		if result.Status == models.ExternalStatusPROCESSED {
+			if updateErr := service.storage.ProcessOrderAccrual(ctx, orderQueueItem.Order.Id, result.Accrual); updateErr != nil {
+				log.Printf("Failed to update order %d status: %v", orderQueueItem.Order.Id, updateErr)
+			}
+			continue
+		}
+		logger.Log.Error("Unknown situation occurred. Wrong status", zap.String("status", string(result.Status)))
+	}
+}
 
-// 	for order := range orderCh {
-// 		// Process the order (call accrual system, handle retries, etc.)
-// 		response, err := service.parseAccrualSystem(ctx, order)
-// 		if err != nil {
-// 			log.Printf("Failed to process order %s: %v", order.Id, err)
-// 			// Update order status to "failed" (optional, with error message)
-// 			if updateErr := service.storage.UpdateOrderStatus(ctx, order.Id, "failed", err.Error()); updateErr != nil {
-// 				log.Printf("Failed to update order %s status: %v", order.Id, updateErr)
-// 			}
-// 		} else {
-// 			// Success: mark as processed
-// 			if updateErr := service.storage.UpdateOrderStatus(ctx, order.Id, "processed", ""); updateErr != nil {
-// 				log.Printf("Failed to update order %s status: %v", order.Id, updateErr)
-// 			}
-// 		}
-// 	}
-// }
+// receive response from accrual system
+func (service *endpointService) parseAccrualSystem(
+	ctx context.Context,
+	order models.OrderQueue,
+	orderCh chan models.OrderQueue,
+	pollInterval int,
+	mockExternalService bool,
+) (*models.AccrualResponse, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(time.Until(order.NextAttemptAt)):
+	}
+	if mockExternalService {
+		//random accrual
+		accrual := rand.Float64() * 500
+		return &models.AccrualResponse{Order: order.Order.Number, Status: models.ExternalStatusPROCESSED, Accrual: accrual}, nil
+	}
+	// create URL
+	url := fmt.Sprintf("%s/api/orders/%s", service.accrualSystemAddress, order.Order.Number)
+	// create HTTP request with context
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	// execute request
+	resp, err := service.httpClient.Do(req)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			order.NextAttemptAt = time.Now().Add(time.Duration(pollInterval) * time.Second)
+			orderCh <- order
+			logger.Log.Debug("timeout received", zap.Time("next attempt at", order.NextAttemptAt))
+			return nil, ErrorOrderNotYetProcessed
+		}
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	// analyze status codes
+	switch resp.StatusCode {
+	case http.StatusOK: // 200
+		var result models.AccrualResponse
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		if result.Status == models.ExternalStatusREGISTERED || result.Status == models.ExternalStatusPROCESSING {
+			order.NextAttemptAt = time.Now().Add(time.Duration(pollInterval) * time.Second)
+			orderCh <- order
+			logger.Log.Debug("status shows not yet processed", zap.String("status", string(result.Status)), zap.Time("next attempt at", order.NextAttemptAt))
+			return nil, ErrorOrderNotYetProcessed
+		}
+		return &result, nil
+	case http.StatusNoContent: // 204
+		order.NextAttemptAt = time.Now().Add(time.Duration(pollInterval) * time.Second)
+		orderCh <- order
+		logger.Log.Debug("status code shows not yet registered", zap.Int("status code", resp.StatusCode), zap.Time("next attempt at", order.NextAttemptAt))
+		return nil, ErrorOrderNotYetProcessed
 
-// // receive response from accrual system
-// func (service *endpointService) parseAccrualSystem(
-// 	ctx context.Context,
-// 	order models.OrderData,
-// ) {
-// 	// Формируем URL согласно спецификации
-// 	url := fmt.Sprintf("%s/api/orders/%s", baseURL, orderNumber)
+	case http.StatusTooManyRequests: // 429
+		retryAfterStr := resp.Header.Get("Retry-After")
+		var retryAfter time.Duration
+		if retryAfterStr != "" {
+			retryAfter = utils.ParseRetryAfter(retryAfterStr)
+		} else {
+			retryAfter = time.Duration(pollInterval) * time.Second
+		}
+		order.NextAttemptAt = time.Now().Add(retryAfter)
+		orderCh <- order
+		logger.Log.Debug("status code shows too many requests", zap.Int("status code", resp.StatusCode), zap.Time("next attempt at", order.NextAttemptAt))
+		return nil, ErrorOrderNotYetProcessed
 
-// 	// Создаём HTTP-запрос с контекстом
-// 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to create request: %w", err)
-// 	}
+	case http.StatusInternalServerError: // 500
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("internal server error: %s", string(body))
 
-// 	// Выполняем запрос (можно настроить таймауты через контекст или клиент)
-// 	client := &http.Client{
-// 		Timeout: 10 * time.Second, // разумный таймаут на всё взаимодействие
-// 	}
-// 	resp, err := client.Do(req)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("request failed: %w", err)
-// 	}
-// 	defer resp.Body.Close()
-
-// 	// Обрабатываем статус-коды
-// 	switch resp.StatusCode {
-// 	case http.StatusOK: // 200
-// 		var result AccrualResponse
-// 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-// 			return nil, fmt.Errorf("failed to decode response: %w", err)
-// 		}
-// 		return &result, nil
-
-// 	case http.StatusNoContent: // 204
-// 		return nil, ErrNotFound
-
-// 	case http.StatusTooManyRequests: // 429
-// 		retryAfterStr := resp.Header.Get("Retry-After")
-// 		var retryAfter int
-// 		if retryAfterStr != "" {
-// 			// Retry-After может быть числом секунд или датой.
-// 			// В спецификации указано число секунд, поэтому пробуем парсить как int.
-// 			if seconds, err := strconv.Atoi(retryAfterStr); err == nil {
-// 				retryAfter = seconds
-// 			} else {
-// 				// Если не число – пробуем распарсить HTTP-дату (RFC 1123)
-// 				if t, err := http.ParseTime(retryAfterStr); err == nil {
-// 					retryAfter = int(time.Until(t).Seconds())
-// 					if retryAfter < 0 {
-// 						retryAfter = 0
-// 					}
-// 				}
-// 			}
-// 		}
-// 		return nil, ErrRateLimit{RetryAfter: retryAfter}
-
-// 	case http.StatusInternalServerError: // 500
-// 		return nil, ErrInternalServer
-
-// 	default:
-// 		// Неожиданный код ответа
-// 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-// 	}
-// }
+	default:
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code: code = %d, body = %s", resp.StatusCode, body)
+	}
+}

@@ -112,6 +112,7 @@ func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// get all orders for current user
 func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 	userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
 	if err != nil {
@@ -130,6 +131,109 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	prettyJSON, err := json.MarshalIndent(orders, "", "  ")
+	if err != nil {
+		logger.Log.Error("failed to encode response", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(prettyJSON)
+	if err != nil {
+		logger.Log.Error("failed to write response", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+}
+
+// get current user balance
+func (h *Handler) GetBalance(w http.ResponseWriter, r *http.Request) {
+	userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+	if err != nil {
+		logger.Log.Error("Failed to get user id from context", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	balance, err := h.service.GetBalance(r.Context(), userID)
+	if err != nil {
+		logger.Log.Error("failed to get user balance", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	prettyJSON, err := json.MarshalIndent(balance, "", "  ")
+	if err != nil {
+		logger.Log.Error("failed to encode response", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(prettyJSON)
+	if err != nil {
+		logger.Log.Error("failed to write response", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+}
+
+// withdraw
+func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	var withdrawData models.WithdrawRequest
+	if err := json.NewDecoder(r.Body).Decode(&withdrawData); err != nil {
+		logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if withdrawData.Order == "" {
+		http.Error(w, "Order number is required", http.StatusBadRequest)
+		return
+	}
+	if withdrawData.Sum < 0 {
+		http.Error(w, "Sum must be positive", http.StatusBadRequest)
+		return
+	}
+	userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+	if err != nil {
+		logger.Log.Error("Failed to get user id from context", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	err = h.service.Withdraw(r.Context(), userID, withdrawData.Order, withdrawData.Sum)
+	if err != nil {
+		if errors.Is(err, service.ErrorNumberNotValid) {
+			http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
+			return
+		}
+		if errors.Is(err, service.ErrInsufficientFunds) {
+			http.Error(w, "User has insufficient funds", http.StatusPaymentRequired)
+			return
+		}
+		logger.Log.Error("failed to get user balance", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// get all user withdrawals
+func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) {
+	userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+	if err != nil {
+		logger.Log.Error("Failed to get user id from context", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	withdrawals, err := h.service.GetAllWithdrawals(r.Context(), userID)
+	if err != nil {
+		logger.Log.Error("failed to get user URLs", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	if len(withdrawals) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	prettyJSON, err := json.MarshalIndent(withdrawals, "", "  ")
 	if err != nil {
 		logger.Log.Error("failed to encode response", zap.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

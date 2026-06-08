@@ -50,9 +50,7 @@ func TestExtractUserIDFromToken_InvalidFormat(t *testing.T) {
 }
 
 func TestExtractUserIDFromToken_WrongSignature(t *testing.T) {
-	// Создаём токен с одним секретом
 	validToken := createTestToken(12345, testSecret)
-	// Пытаемся распарсить другим секретом
 	_, err := extractUserIDFromToken(validToken, "wrong-secret")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed to parse jwt")

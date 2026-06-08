@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS withdrawals (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    number VARCHAR(19) UNIQUE NOT NULL,
-    order_id BIGINT REFERENCES orders (id) ON DELETE CASCADE,
+    order_number VARCHAR(19) NOT NULL,
+    user_id BIGINT REFERENCES users (id) ON DELETE CASCADE,
     processed_at TIMESTAMP DEFAULT NOW(),
-    sum NUMERIC NOT NULL DEFAULT 0
+    sum NUMERIC NOT NULL DEFAULT 0,
+    UNIQUE(user_id, order_number)
 );

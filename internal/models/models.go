@@ -77,6 +77,42 @@ type OrderData struct {
 	Id         int64       `json:"-"`
 	Number     string      `json:"number"`
 	Status     OrderStatus `json:"status"`
-	Accrual    int64       `json:"accrual"`
+	Accrual    float64     `json:"accrual"`
 	UploadedAt TimeRFC3339 `json:"uploaded_at"`
+}
+
+type OrderQueue struct {
+	Order         OrderData
+	NextAttemptAt time.Time
+}
+
+type ExternalStatus string
+
+const (
+	ExternalStatusREGISTERED = "REGISTERED"
+	ExternalStatusINVALID    = "INVALID"
+	ExternalStatusPROCESSING = "PROCESSING"
+	ExternalStatusPROCESSED  = "PROCESSED"
+)
+
+type AccrualResponse struct {
+	Order   string         `json:"order"`
+	Status  ExternalStatus `json:"status"`
+	Accrual float64        `json:"accrual"`
+}
+
+type BalanceData struct {
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+}
+
+type WithdrawRequest struct {
+	Order string  `json:"order"`
+	Sum   float64 `json:"sum"`
+}
+
+type WithdrawData struct {
+	Order       string      `json:"order"`
+	Sum         float64     `json:"sum"`
+	ProcessedAt TimeRFC3339 `json:"processed_at"`
 }

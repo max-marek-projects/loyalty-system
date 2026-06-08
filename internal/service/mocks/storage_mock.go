@@ -251,6 +251,124 @@ func (_c *Storage_GetAllOrders_Call) RunAndReturn(run func(context.Context, int6
 	return _c
 }
 
+// GetAllWithdrawals provides a mock function with given fields: ctx, userID
+func (_m *Storage) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllWithdrawals")
+	}
+
+	var r0 []models.WithdrawData
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]models.WithdrawData, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) []models.WithdrawData); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.WithdrawData)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Storage_GetAllWithdrawals_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllWithdrawals'
+type Storage_GetAllWithdrawals_Call struct {
+	*mock.Call
+}
+
+// GetAllWithdrawals is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *Storage_Expecter) GetAllWithdrawals(ctx interface{}, userID interface{}) *Storage_GetAllWithdrawals_Call {
+	return &Storage_GetAllWithdrawals_Call{Call: _e.mock.On("GetAllWithdrawals", ctx, userID)}
+}
+
+func (_c *Storage_GetAllWithdrawals_Call) Run(run func(ctx context.Context, userID int64)) *Storage_GetAllWithdrawals_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *Storage_GetAllWithdrawals_Call) Return(_a0 []models.WithdrawData, _a1 error) *Storage_GetAllWithdrawals_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Storage_GetAllWithdrawals_Call) RunAndReturn(run func(context.Context, int64) ([]models.WithdrawData, error)) *Storage_GetAllWithdrawals_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBalance provides a mock function with given fields: ctx, userID
+func (_m *Storage) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBalance")
+	}
+
+	var r0 *models.BalanceData
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*models.BalanceData, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *models.BalanceData); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.BalanceData)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Storage_GetBalance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBalance'
+type Storage_GetBalance_Call struct {
+	*mock.Call
+}
+
+// GetBalance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *Storage_Expecter) GetBalance(ctx interface{}, userID interface{}) *Storage_GetBalance_Call {
+	return &Storage_GetBalance_Call{Call: _e.mock.On("GetBalance", ctx, userID)}
+}
+
+func (_c *Storage_GetBalance_Call) Run(run func(ctx context.Context, userID int64)) *Storage_GetBalance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *Storage_GetBalance_Call) Return(_a0 *models.BalanceData, _a1 error) *Storage_GetBalance_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Storage_GetBalance_Call) RunAndReturn(run func(context.Context, int64) (*models.BalanceData, error)) *Storage_GetBalance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MarkAllProcessingAsNew provides a mock function with given fields: ctx
 func (_m *Storage) MarkAllProcessingAsNew(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -293,6 +411,54 @@ func (_c *Storage_MarkAllProcessingAsNew_Call) Return(_a0 error) *Storage_MarkAl
 }
 
 func (_c *Storage_MarkAllProcessingAsNew_Call) RunAndReturn(run func(context.Context) error) *Storage_MarkAllProcessingAsNew_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ProcessOrderAccrual provides a mock function with given fields: ctx, orderId, accrual
+func (_m *Storage) ProcessOrderAccrual(ctx context.Context, orderId int64, accrual float64) error {
+	ret := _m.Called(ctx, orderId, accrual)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ProcessOrderAccrual")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, float64) error); ok {
+		r0 = rf(ctx, orderId, accrual)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Storage_ProcessOrderAccrual_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProcessOrderAccrual'
+type Storage_ProcessOrderAccrual_Call struct {
+	*mock.Call
+}
+
+// ProcessOrderAccrual is a helper method to define mock.On call
+//   - ctx context.Context
+//   - orderId int64
+//   - accrual float64
+func (_e *Storage_Expecter) ProcessOrderAccrual(ctx interface{}, orderId interface{}, accrual interface{}) *Storage_ProcessOrderAccrual_Call {
+	return &Storage_ProcessOrderAccrual_Call{Call: _e.mock.On("ProcessOrderAccrual", ctx, orderId, accrual)}
+}
+
+func (_c *Storage_ProcessOrderAccrual_Call) Run(run func(ctx context.Context, orderId int64, accrual float64)) *Storage_ProcessOrderAccrual_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(float64))
+	})
+	return _c
+}
+
+func (_c *Storage_ProcessOrderAccrual_Call) Return(_a0 error) *Storage_ProcessOrderAccrual_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Storage_ProcessOrderAccrual_Call) RunAndReturn(run func(context.Context, int64, float64) error) *Storage_ProcessOrderAccrual_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -350,6 +516,103 @@ func (_c *Storage_RegisterUser_Call) Return(_a0 int64, _a1 error) *Storage_Regis
 }
 
 func (_c *Storage_RegisterUser_Call) RunAndReturn(run func(context.Context, models.UserData) (int64, error)) *Storage_RegisterUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateOrderStatus provides a mock function with given fields: ctx, orderId, status
+func (_m *Storage) UpdateOrderStatus(ctx context.Context, orderId int64, status models.OrderStatus) error {
+	ret := _m.Called(ctx, orderId, status)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateOrderStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, models.OrderStatus) error); ok {
+		r0 = rf(ctx, orderId, status)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Storage_UpdateOrderStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateOrderStatus'
+type Storage_UpdateOrderStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateOrderStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - orderId int64
+//   - status models.OrderStatus
+func (_e *Storage_Expecter) UpdateOrderStatus(ctx interface{}, orderId interface{}, status interface{}) *Storage_UpdateOrderStatus_Call {
+	return &Storage_UpdateOrderStatus_Call{Call: _e.mock.On("UpdateOrderStatus", ctx, orderId, status)}
+}
+
+func (_c *Storage_UpdateOrderStatus_Call) Run(run func(ctx context.Context, orderId int64, status models.OrderStatus)) *Storage_UpdateOrderStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(models.OrderStatus))
+	})
+	return _c
+}
+
+func (_c *Storage_UpdateOrderStatus_Call) Return(_a0 error) *Storage_UpdateOrderStatus_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Storage_UpdateOrderStatus_Call) RunAndReturn(run func(context.Context, int64, models.OrderStatus) error) *Storage_UpdateOrderStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Withdraw provides a mock function with given fields: ctx, userID, orderNumber, sum
+func (_m *Storage) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error {
+	ret := _m.Called(ctx, userID, orderNumber, sum)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Withdraw")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, string, float64) error); ok {
+		r0 = rf(ctx, userID, orderNumber, sum)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Storage_Withdraw_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Withdraw'
+type Storage_Withdraw_Call struct {
+	*mock.Call
+}
+
+// Withdraw is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+//   - orderNumber string
+//   - sum float64
+func (_e *Storage_Expecter) Withdraw(ctx interface{}, userID interface{}, orderNumber interface{}, sum interface{}) *Storage_Withdraw_Call {
+	return &Storage_Withdraw_Call{Call: _e.mock.On("Withdraw", ctx, userID, orderNumber, sum)}
+}
+
+func (_c *Storage_Withdraw_Call) Run(run func(ctx context.Context, userID int64, orderNumber string, sum float64)) *Storage_Withdraw_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(string), args[3].(float64))
+	})
+	return _c
+}
+
+func (_c *Storage_Withdraw_Call) Return(_a0 error) *Storage_Withdraw_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Storage_Withdraw_Call) RunAndReturn(run func(context.Context, int64, string, float64) error) *Storage_Withdraw_Call {
 	_c.Call.Return(run)
 	return _c
 }

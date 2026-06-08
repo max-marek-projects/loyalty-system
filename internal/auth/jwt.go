@@ -45,7 +45,6 @@ func SetUserCookie(w http.ResponseWriter, userID int64, secretKey string) error 
 
 func extractUserIDFromToken(token string, secretKey string) (int64, error) {
 	claims := &Claims{}
-	logger.Log.Info("Token and key", zap.String("token", token), zap.String("key", secretKey))
 	tokenData, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
 		return []byte(secretKey), nil
 	})

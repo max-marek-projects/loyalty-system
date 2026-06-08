@@ -18,6 +18,8 @@ type Config struct {
 	DatabaseUri          string        `env:"DATABASE_URI"`           // database connection url
 	CookieSecret         string        `env:"COOKIE_SECRET"`          // secret for cookie signature
 	MaxParallelWorkers   int           `env:"MAX_PARALLEL_WORKERS"`   // max amount of parallel workers
+	PollInterval         int           `env:"POLL_INTERVAL"`          // external system poll interval
+	MockExternalService  bool          `env:"MOCK_EXTERNAL_STORAGE"`  // mock external storage
 	AccrualSystemAddress string        `env:"ACCRUAL_SYSTEM_ADDRESS"` // loyalty calculation system address
 }
 
@@ -40,6 +42,8 @@ func LoadConfig() *Config {
 	flag.StringVar(&config.CookieSecret, "s", "", "cookie signing secret")
 	flag.IntVar(&config.MaxParallelWorkers, "p", 5, "maximum amount of parallel workers")
 	flag.StringVar(&config.AccrualSystemAddress, "r", "", "maximum concurrent parallel operations")
+	flag.IntVar(&config.PollInterval, "i", 30, "external service poll interval")
+	flag.BoolVar(&config.MockExternalService, "m", false, "mock external storage")
 	// read flags to temp vars
 	var readSec, writeSec int
 	flag.IntVar(&readSec, "t", 30, "server read timeout in seconds")

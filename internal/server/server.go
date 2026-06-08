@@ -23,15 +23,18 @@ func NewServer(addr string, h *handlers.Handler, readTimeout, writeTimeout time.
 	r.Use(middleware.Recoverer)
 	r.Use(middlewares.RequestsLogger)
 
-	r.Route("/api", func(api chi.Router) {
+	r.Route("/api/user", func(api chi.Router) {
 		// public endpoints
-		api.Post("/user/register", h.RegisterUser)
-		api.Post("/user/login", h.LoginUser)
+		api.Post("/register", h.RegisterUser)
+		api.Post("/login", h.LoginUser)
 		// protected endpoints
 		api.Group(func(protected chi.Router) {
 			protected.Use(middlewares.AuthMiddleware(cookieSecret))
-			protected.Get("/user/orders", h.GetUserOrders)
-			protected.Post("/user/orders", h.NewOrder)
+			protected.Get("/orders", h.GetUserOrders)
+			protected.Post("/orders", h.NewOrder)
+			protected.Get("/balance", h.GetBalance)
+			protected.Post("/balance/withdraw", h.Withdraw)
+			protected.Get("/withdrawals", h.GetUserWithdrawals)
 		})
 	})
 

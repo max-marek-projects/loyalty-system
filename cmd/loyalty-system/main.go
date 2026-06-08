@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		logger.Log.Fatal("Unable to create service", zap.Error(err))
 	}
-	// go service.StartOrderProcessor(context.Background(), configData.MaxParallelWorkers)
+	go service.StartOrderProcessor(context.Background(), configData.MaxParallelWorkers, configData.PollInterval, configData.MockExternalService)
 	handler := handlers.NewHandler(service, configData.MaxParallelWorkers, configData.CookieSecret)
 	srv := server.NewServer(configData.RunAddr, handler, configData.ReadTimeout, configData.WriteTimeout, configData.CookieSecret)
 
