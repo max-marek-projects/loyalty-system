@@ -7,7 +7,7 @@ run-client:
 	go run ./cmd/client/main.go
 
 run:
-	go build -o bin/loyalty-system ./cmd/loyalty-system
+	go build -o bin/loyalty-system ./cmd/gophermart
 	./bin/loyalty-system
 
 mocks:
