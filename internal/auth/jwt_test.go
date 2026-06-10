@@ -48,20 +48,20 @@ func TestGetUserIDFromRequest_NoCookie(t *testing.T) {
 func TestExtractUserIDFromToken_InvalidFormat(t *testing.T) {
 	_, err := extractUserIDFromToken("not-a-jwt-token", testSecret)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed to parse jwt")
+	assert.Contains(t, err.Error(), "failed to parse jwt")
 }
 
 func TestExtractUserIDFromToken_WrongSignature(t *testing.T) {
 	validToken := createTestToken(12345, testSecret)
 	_, err := extractUserIDFromToken(validToken, "wrong-secret")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed to parse jwt")
+	assert.Contains(t, err.Error(), "failed to parse jwt")
 }
 
 func TestExtractUserIDFromToken_EmptyToken(t *testing.T) {
 	_, err := extractUserIDFromToken("", testSecret)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed to parse jwt")
+	assert.Contains(t, err.Error(), "failed to parse jwt")
 }
 
 func createTestToken(userID int64, secret string) string {

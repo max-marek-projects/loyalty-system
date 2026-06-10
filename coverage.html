@@ -3,7 +3,7 @@
 <html>
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-		<title>loyalty-system: Go Coverage Report</title>
+		<title>gophermart: Go Coverage Report</title>
 		<style>
 			body {
 				background: black;
@@ -55,41 +55,37 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/max-marek-projects/loyalty-system/cmd/loyalty-system/main.go (0.0%)</option>
+				<option value="file0">github.com/max-marek-projects/loyalty-system/cmd/gophermart/main.go (0.0%)</option>
 				
-				<option value="file1">github.com/max-marek-projects/loyalty-system/internal/auth/jwt.go (90.5%)</option>
+				<option value="file1">github.com/max-marek-projects/loyalty-system/internal/auth/jwt.go (90.0%)</option>
 				
-				<option value="file2">github.com/max-marek-projects/loyalty-system/internal/config/config.go (0.0%)</option>
+				<option value="file2">github.com/max-marek-projects/loyalty-system/internal/config/config.go (91.3%)</option>
 				
-				<option value="file3">github.com/max-marek-projects/loyalty-system/internal/config/db/config.go (0.0%)</option>
+				<option value="file3">github.com/max-marek-projects/loyalty-system/internal/config/db/config.go (100.0%)</option>
 				
 				<option value="file4">github.com/max-marek-projects/loyalty-system/internal/config/db/connection.go (0.0%)</option>
 				
-				<option value="file5">github.com/max-marek-projects/loyalty-system/internal/handlers/api.go (38.3%)</option>
+				<option value="file5">github.com/max-marek-projects/loyalty-system/internal/handlers/api.go (74.9%)</option>
 				
 				<option value="file6">github.com/max-marek-projects/loyalty-system/internal/handlers/handlers.go (100.0%)</option>
 				
-				<option value="file7">github.com/max-marek-projects/loyalty-system/internal/handlers/mocks/service_mock.go (0.0%)</option>
+				<option value="file7">github.com/max-marek-projects/loyalty-system/internal/logger/logger.go (90.0%)</option>
 				
-				<option value="file8">github.com/max-marek-projects/loyalty-system/internal/logger/logger.go (0.0%)</option>
+				<option value="file8">github.com/max-marek-projects/loyalty-system/internal/middlewares/auth.go (88.9%)</option>
 				
-				<option value="file9">github.com/max-marek-projects/loyalty-system/internal/middlewares/auth.go (0.0%)</option>
+				<option value="file9">github.com/max-marek-projects/loyalty-system/internal/middlewares/logger.go (93.3%)</option>
 				
-				<option value="file10">github.com/max-marek-projects/loyalty-system/internal/middlewares/logger.go (93.3%)</option>
+				<option value="file10">github.com/max-marek-projects/loyalty-system/internal/models/models.go (100.0%)</option>
 				
-				<option value="file11">github.com/max-marek-projects/loyalty-system/internal/models/models.go (0.0%)</option>
+				<option value="file11">github.com/max-marek-projects/loyalty-system/internal/repository/db.go (68.8%)</option>
 				
-				<option value="file12">github.com/max-marek-projects/loyalty-system/internal/repository/db.go (0.0%)</option>
+				<option value="file12">github.com/max-marek-projects/loyalty-system/internal/server/server.go (100.0%)</option>
 				
-				<option value="file13">github.com/max-marek-projects/loyalty-system/internal/server/server.go (0.0%)</option>
+				<option value="file13">github.com/max-marek-projects/loyalty-system/internal/service/service.go (44.4%)</option>
 				
-				<option value="file14">github.com/max-marek-projects/loyalty-system/internal/service/mocks/storage_mock.go (0.0%)</option>
+				<option value="file14">github.com/max-marek-projects/loyalty-system/internal/utils/algorithms.go (100.0%)</option>
 				
-				<option value="file15">github.com/max-marek-projects/loyalty-system/internal/service/service.go (0.0%)</option>
-				
-				<option value="file16">github.com/max-marek-projects/loyalty-system/internal/utils/algorithms.go (0.0%)</option>
-				
-				<option value="file17">github.com/max-marek-projects/loyalty-system/internal/utils/headers.go (0.0%)</option>
+				<option value="file15">github.com/max-marek-projects/loyalty-system/internal/utils/headers.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -131,7 +127,7 @@ func main() <span class="cov0" title="0">{
         if err != nil </span><span class="cov0" title="0">{
                 log.Fatalf("Unable to initialize logger: %v", err)
         }</span>
-        <span class="cov0" title="0">store, err := repository.NewDBStorage(configData.DatabaseUri)
+        <span class="cov0" title="0">store, err := repository.NewDBStorage(configData.DatabaseURI)
         if err != nil </span><span class="cov0" title="0">{
                 logger.Log.Fatal("Unable to create storage", zap.Error(err))
         }</span>
@@ -139,8 +135,8 @@ func main() <span class="cov0" title="0">{
         if err != nil </span><span class="cov0" title="0">{
                 logger.Log.Fatal("Unable to create service", zap.Error(err))
         }</span>
-        // go service.StartOrderProcessor(context.Background(), configData.MaxParallelWorkers)
-        <span class="cov0" title="0">handler := handlers.NewHandler(service, configData.MaxParallelWorkers, configData.CookieSecret)
+        <span class="cov0" title="0">go service.StartOrderProcessor(context.Background(), configData.MaxParallelWorkers, configData.PollInterval, configData.MockExternalService)
+        handler := handlers.NewHandler(service, configData.MaxParallelWorkers, configData.CookieSecret)
         srv := server.NewServer(configData.RunAddr, handler, configData.ReadTimeout, configData.WriteTimeout, configData.CookieSecret)
 
         // create separate goroutine
@@ -223,12 +219,11 @@ func SetUserCookie(w http.ResponseWriter, userID int64, secretKey string) error 
 
 func extractUserIDFromToken(token string, secretKey string) (int64, error) <span class="cov8" title="1">{
         claims := &amp;Claims{}
-        logger.Log.Info("Token and key", zap.String("token", token), zap.String("key", secretKey))
         tokenData, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) </span><span class="cov8" title="1">{
                 return []byte(secretKey), nil
         }</span>)
         <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
-                return 0, fmt.Errorf("Failed to parse jwt: %v", err)
+                return 0, fmt.Errorf("failed to parse jwt: %v", err)
         }</span>
         <span class="cov8" title="1">if !tokenData.Valid </span><span class="cov0" title="0">{
                 return 0, errors.New("invalid token")
@@ -263,31 +258,35 @@ type Config struct {
         ReadTimeout          time.Duration `env:"READ_TIMEOUT"`           // server read timeout in seconds
         WriteTimeout         time.Duration `env:"WRITE_TIMEOUT"`          // server write timeout in seconds
         LoggerLevel          string        `env:"LOGGER_LEVEL"`           // logger level DEBUG / INFO / WARNING / ERROR / FATAL
-        DatabaseUri          string        `env:"DATABASE_URI"`           // database connection url
+        DatabaseURI          string        `env:"DATABASE_URI"`           // database connection url
         CookieSecret         string        `env:"COOKIE_SECRET"`          // secret for cookie signature
         MaxParallelWorkers   int           `env:"MAX_PARALLEL_WORKERS"`   // max amount of parallel workers
+        PollInterval         int           `env:"POLL_INTERVAL"`          // external system poll interval
+        MockExternalService  bool          `env:"MOCK_EXTERNAL_STORAGE"`  // mock external storage
         AccrualSystemAddress string        `env:"ACCRUAL_SYSTEM_ADDRESS"` // loyalty calculation system address
 }
 
 // parse all flags from command line
-func LoadConfig() *Config <span class="cov0" title="0">{
+func LoadConfig() *Config <span class="cov8" title="1">{
         var config Config
 
         err := godotenv.Load()
-        if err != nil </span><span class="cov0" title="0">{
-                if os.IsNotExist(err) </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
+                if os.IsNotExist(err) </span><span class="cov8" title="1">{
                         log.Println("No .env file found, using environment variables and flags")
                 }</span> else<span class="cov0" title="0"> {
                         log.Fatalf("Failed to load .env file: %v", err)
                 }</span>
         }
         // read flags directly to config
-        <span class="cov0" title="0">flag.StringVar(&amp;config.RunAddr, "a", ":8080", "address and port to run server")
+        <span class="cov8" title="1">flag.StringVar(&amp;config.RunAddr, "a", ":8080", "address and port to run server")
         flag.StringVar(&amp;config.LoggerLevel, "l", "INFO", "logger level")
-        flag.StringVar(&amp;config.DatabaseUri, "d", "", "database connection url")
+        flag.StringVar(&amp;config.DatabaseURI, "d", "", "database connection url")
         flag.StringVar(&amp;config.CookieSecret, "s", "", "cookie signing secret")
         flag.IntVar(&amp;config.MaxParallelWorkers, "p", 5, "maximum amount of parallel workers")
         flag.StringVar(&amp;config.AccrualSystemAddress, "r", "", "maximum concurrent parallel operations")
+        flag.IntVar(&amp;config.PollInterval, "i", 5, "external service poll interval")
+        flag.BoolVar(&amp;config.MockExternalService, "m", false, "mock external storage")
         // read flags to temp vars
         var readSec, writeSec int
         flag.IntVar(&amp;readSec, "t", 30, "server read timeout in seconds")
@@ -300,7 +299,7 @@ func LoadConfig() *Config <span class="cov0" title="0">{
         if err := env.Parse(&amp;config); err != nil </span><span class="cov0" title="0">{
                 log.Printf("warning: failed to parse env: %v", err)
         }</span>
-        <span class="cov0" title="0">return &amp;config</span>
+        <span class="cov8" title="1">return &amp;config</span>
 }
 </pre>
 		
@@ -316,9 +315,9 @@ type DBConf struct {
         MigrationsPath  string        // path to folder with migrations files
 }
 
-func NewDbConf(dbUrl string) *DBConf <span class="cov0" title="0">{
+func NewDBConf(dbURL string) *DBConf <span class="cov8" title="1">{
         return &amp;DBConf{
-                URL:             dbUrl,
+                URL:             dbURL,
                 MaxOpenConns:    10,
                 MaxIdleConns:    5,
                 ConnMaxLifetime: 5 * time.Minute,
@@ -434,29 +433,29 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) <span class=
 }
 
 // add new order number
-func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         body, err := io.ReadAll(r.Body)
-        if err != nil || len(body) == 0 </span><span class="cov0" title="0">{
+        if err != nil || len(body) == 0 </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusBadRequest)
                 return
         }</span>
-        <span class="cov0" title="0">if len(body) == 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(body) == 0 </span><span class="cov0" title="0">{
                 http.Error(w, "Empty number", http.StatusBadRequest)
                 return
         }</span>
-        <span class="cov0" title="0">userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
                 logger.Log.Error("Failed to get user id from context", zap.Error(err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
-        <span class="cov0" title="0">added, err := h.service.AddOrder(r.Context(), userID, string(body))
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">added, err := h.service.AddOrder(r.Context(), userID, string(body))
+        if err != nil </span><span class="cov8" title="1">{
                 if errors.Is(err, service.ErrorOrdersConflict) </span><span class="cov0" title="0">{
                         http.Error(w, "Order number already taken by other user", http.StatusConflict)
                         return
                 }</span>
-                <span class="cov0" title="0">if errors.Is(err, service.ErrorNumberNotValid) </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if errors.Is(err, service.ErrorNumberNotValid) </span><span class="cov8" title="1">{
                         http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
                         return
                 }</span>
@@ -464,37 +463,143 @@ func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return</span>
         }
-        <span class="cov0" title="0">if added </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if added </span><span class="cov8" title="1">{
                 w.WriteHeader(http.StatusAccepted)
                 return
         }</span>
-        <span class="cov0" title="0">w.WriteHeader(http.StatusOK)</span>
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
 }
 
-func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+// get all orders for current user
+func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 logger.Log.Error("Failed to get user id from context", zap.Error(err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
-        <span class="cov0" title="0">orders, err := h.service.GetAllOrders(r.Context(), userID)
+        <span class="cov8" title="1">orders, err := h.service.GetAllOrders(r.Context(), userID)
         if err != nil </span><span class="cov0" title="0">{
                 logger.Log.Error("failed to get user URLs", zap.Error(err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
-        <span class="cov0" title="0">if len(orders) == 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(orders) == 0 </span><span class="cov0" title="0">{
+                w.Header().Set("Content-Type", "application/json")
                 w.WriteHeader(http.StatusNoContent)
                 return
         }</span>
-        <span class="cov0" title="0">prettyJSON, err := json.MarshalIndent(orders, "", "  ")
+        <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(orders, "", "  ")
         if err != nil </span><span class="cov0" title="0">{
                 logger.Log.Error("failed to encode response", zap.Error(err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
-        <span class="cov0" title="0">w.Header().Set("Content-Type", "application/json")
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        _, err = w.Write(prettyJSON)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to write response", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+}
+
+// get current user balance
+func (h *Handler) GetBalance(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("Failed to get user id from context", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">balance, err := h.service.GetBalance(r.Context(), userID)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("failed to get user balance", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(balance, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to encode response", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        _, err = w.Write(prettyJSON)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to write response", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+}
+
+// withdraw
+func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        var withdrawData models.WithdrawRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;withdrawData); err != nil </span><span class="cov0" title="0">{
+                logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+                http.Error(w, "Invalid JSON", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">if withdrawData.Order == "" </span><span class="cov8" title="1">{
+                http.Error(w, "Order number is required", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">if withdrawData.Sum &lt; 0 </span><span class="cov8" title="1">{
+                http.Error(w, "Sum must be positive", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("Failed to get user id from context", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">err = h.service.Withdraw(r.Context(), userID, withdrawData.Order, withdrawData.Sum)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, service.ErrorNumberNotValid) </span><span class="cov8" title="1">{
+                        http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
+                        return
+                }</span>
+                <span class="cov8" title="1">if errors.Is(err, service.ErrInsufficientFunds) </span><span class="cov8" title="1">{
+                        http.Error(w, "User has insufficient funds", http.StatusPaymentRequired)
+                        return
+                }</span>
+                <span class="cov0" title="0">logger.Log.Error("failed to get user balance", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return</span>
+        }
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
+}
+
+// get all user withdrawals
+func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("Failed to get user id from context", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">withdrawals, err := h.service.GetAllWithdrawals(r.Context(), userID)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("failed to get user URLs", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">if len(withdrawals) == 0 </span><span class="cov8" title="1">{
+                w.Header().Set("Content-Type", "application/json")
+                w.WriteHeader(http.StatusNoContent)
+                return
+        }</span>
+        <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(withdrawals, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to encode response", zap.Error(err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusOK)
         _, err = w.Write(prettyJSON)
         if err != nil </span><span class="cov0" title="0">{
@@ -524,277 +629,7 @@ func NewHandler(service service.Service, maxParallelWorkers int, secretKey strin
 }</span>
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">// Code generated by mockery v2.53.6. DO NOT EDIT.
-
-package mocks
-
-import (
-        context "context"
-
-        models "github.com/max-marek-projects/loyalty-system/internal/models"
-        mock "github.com/stretchr/testify/mock"
-)
-
-// Service is an autogenerated mock type for the Service type
-type Service struct {
-        mock.Mock
-}
-
-type Service_Expecter struct {
-        mock *mock.Mock
-}
-
-func (_m *Service) EXPECT() *Service_Expecter <span class="cov0" title="0">{
-        return &amp;Service_Expecter{mock: &amp;_m.Mock}
-}</span>
-
-// AddOrder provides a mock function with given fields: ctx, userID, orderNumber
-func (_m *Service) AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error) <span class="cov0" title="0">{
-        ret := _m.Called(ctx, userID, orderNumber)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for AddOrder")</span>
-        }
-
-        <span class="cov0" title="0">var r0 bool
-        var r1 error
-        if rf, ok := ret.Get(0).(func(context.Context, int64, string) (bool, error)); ok </span><span class="cov0" title="0">{
-                return rf(ctx, userID, orderNumber)
-        }</span>
-        <span class="cov0" title="0">if rf, ok := ret.Get(0).(func(context.Context, int64, string) bool); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx, userID, orderNumber)
-        }</span> else<span class="cov0" title="0"> {
-                r0 = ret.Get(0).(bool)
-        }</span>
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(1).(func(context.Context, int64, string) error); ok </span><span class="cov0" title="0">{
-                r1 = rf(ctx, userID, orderNumber)
-        }</span> else<span class="cov0" title="0"> {
-                r1 = ret.Error(1)
-        }</span>
-
-        <span class="cov0" title="0">return r0, r1</span>
-}
-
-// Service_AddOrder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddOrder'
-type Service_AddOrder_Call struct {
-        *mock.Call
-}
-
-// AddOrder is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-//   - orderNumber string
-func (_e *Service_Expecter) AddOrder(ctx interface{}, userID interface{}, orderNumber interface{}) *Service_AddOrder_Call <span class="cov0" title="0">{
-        return &amp;Service_AddOrder_Call{Call: _e.mock.On("AddOrder", ctx, userID, orderNumber)}
-}</span>
-
-func (_c *Service_AddOrder_Call) Run(run func(ctx context.Context, userID int64, orderNumber string)) *Service_AddOrder_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context), args[1].(int64), args[2].(string))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Service_AddOrder_Call) Return(_a0 bool, _a1 error) *Service_AddOrder_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0, _a1)
-        return _c
-}</span>
-
-func (_c *Service_AddOrder_Call) RunAndReturn(run func(context.Context, int64, string) (bool, error)) *Service_AddOrder_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// GetAllOrders provides a mock function with given fields: ctx, userID
-func (_m *Service) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov0" title="0">{
-        ret := _m.Called(ctx, userID)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for GetAllOrders")</span>
-        }
-
-        <span class="cov0" title="0">var r0 []models.OrderData
-        var r1 error
-        if rf, ok := ret.Get(0).(func(context.Context, int64) ([]models.OrderData, error)); ok </span><span class="cov0" title="0">{
-                return rf(ctx, userID)
-        }</span>
-        <span class="cov0" title="0">if rf, ok := ret.Get(0).(func(context.Context, int64) []models.OrderData); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx, userID)
-        }</span> else<span class="cov0" title="0"> {
-                if ret.Get(0) != nil </span><span class="cov0" title="0">{
-                        r0 = ret.Get(0).([]models.OrderData)
-                }</span>
-        }
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok </span><span class="cov0" title="0">{
-                r1 = rf(ctx, userID)
-        }</span> else<span class="cov0" title="0"> {
-                r1 = ret.Error(1)
-        }</span>
-
-        <span class="cov0" title="0">return r0, r1</span>
-}
-
-// Service_GetAllOrders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllOrders'
-type Service_GetAllOrders_Call struct {
-        *mock.Call
-}
-
-// GetAllOrders is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-func (_e *Service_Expecter) GetAllOrders(ctx interface{}, userID interface{}) *Service_GetAllOrders_Call <span class="cov0" title="0">{
-        return &amp;Service_GetAllOrders_Call{Call: _e.mock.On("GetAllOrders", ctx, userID)}
-}</span>
-
-func (_c *Service_GetAllOrders_Call) Run(run func(ctx context.Context, userID int64)) *Service_GetAllOrders_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context), args[1].(int64))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Service_GetAllOrders_Call) Return(_a0 []models.OrderData, _a1 error) *Service_GetAllOrders_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0, _a1)
-        return _c
-}</span>
-
-func (_c *Service_GetAllOrders_Call) RunAndReturn(run func(context.Context, int64) ([]models.OrderData, error)) *Service_GetAllOrders_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// LoginUser provides a mock function with given fields: ctx, userData
-func (_m *Service) LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov0" title="0">{
-        ret := _m.Called(ctx, userData)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for LoginUser")</span>
-        }
-
-        <span class="cov0" title="0">var r0 int64
-        var r1 error
-        if rf, ok := ret.Get(0).(func(context.Context, models.RegisterRequest) (int64, error)); ok </span><span class="cov0" title="0">{
-                return rf(ctx, userData)
-        }</span>
-        <span class="cov0" title="0">if rf, ok := ret.Get(0).(func(context.Context, models.RegisterRequest) int64); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx, userData)
-        }</span> else<span class="cov0" title="0"> {
-                r0 = ret.Get(0).(int64)
-        }</span>
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(1).(func(context.Context, models.RegisterRequest) error); ok </span><span class="cov0" title="0">{
-                r1 = rf(ctx, userData)
-        }</span> else<span class="cov0" title="0"> {
-                r1 = ret.Error(1)
-        }</span>
-
-        <span class="cov0" title="0">return r0, r1</span>
-}
-
-// Service_LoginUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoginUser'
-type Service_LoginUser_Call struct {
-        *mock.Call
-}
-
-// LoginUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userData models.RegisterRequest
-func (_e *Service_Expecter) LoginUser(ctx interface{}, userData interface{}) *Service_LoginUser_Call <span class="cov0" title="0">{
-        return &amp;Service_LoginUser_Call{Call: _e.mock.On("LoginUser", ctx, userData)}
-}</span>
-
-func (_c *Service_LoginUser_Call) Run(run func(ctx context.Context, userData models.RegisterRequest)) *Service_LoginUser_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context), args[1].(models.RegisterRequest))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Service_LoginUser_Call) Return(_a0 int64, _a1 error) *Service_LoginUser_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0, _a1)
-        return _c
-}</span>
-
-func (_c *Service_LoginUser_Call) RunAndReturn(run func(context.Context, models.RegisterRequest) (int64, error)) *Service_LoginUser_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// RegisterUser provides a mock function with given fields: ctx, userData
-func (_m *Service) RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov0" title="0">{
-        ret := _m.Called(ctx, userData)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for RegisterUser")</span>
-        }
-
-        <span class="cov0" title="0">var r0 int64
-        var r1 error
-        if rf, ok := ret.Get(0).(func(context.Context, models.RegisterRequest) (int64, error)); ok </span><span class="cov0" title="0">{
-                return rf(ctx, userData)
-        }</span>
-        <span class="cov0" title="0">if rf, ok := ret.Get(0).(func(context.Context, models.RegisterRequest) int64); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx, userData)
-        }</span> else<span class="cov0" title="0"> {
-                r0 = ret.Get(0).(int64)
-        }</span>
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(1).(func(context.Context, models.RegisterRequest) error); ok </span><span class="cov0" title="0">{
-                r1 = rf(ctx, userData)
-        }</span> else<span class="cov0" title="0"> {
-                r1 = ret.Error(1)
-        }</span>
-
-        <span class="cov0" title="0">return r0, r1</span>
-}
-
-// Service_RegisterUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterUser'
-type Service_RegisterUser_Call struct {
-        *mock.Call
-}
-
-// RegisterUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userData models.RegisterRequest
-func (_e *Service_Expecter) RegisterUser(ctx interface{}, userData interface{}) *Service_RegisterUser_Call <span class="cov0" title="0">{
-        return &amp;Service_RegisterUser_Call{Call: _e.mock.On("RegisterUser", ctx, userData)}
-}</span>
-
-func (_c *Service_RegisterUser_Call) Run(run func(ctx context.Context, userData models.RegisterRequest)) *Service_RegisterUser_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context), args[1].(models.RegisterRequest))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Service_RegisterUser_Call) Return(_a0 int64, _a1 error) *Service_RegisterUser_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0, _a1)
-        return _c
-}</span>
-
-func (_c *Service_RegisterUser_Call) RunAndReturn(run func(context.Context, models.RegisterRequest) (int64, error)) *Service_RegisterUser_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// NewService creates a new instance of Service. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-// The first argument is typically a *testing.T value.
-func NewService(t interface {
-        mock.TestingT
-        Cleanup(func())
-}) *Service <span class="cov0" title="0">{
-        mock := &amp;Service{}
-        mock.Mock.Test(t)
-
-        t.Cleanup(func() </span><span class="cov0" title="0">{ mock.AssertExpectations(t) }</span>)
-
-        <span class="cov0" title="0">return mock</span>
-}
-</pre>
-		
-		<pre class="file" id="file8" style="display: none">package logger
+		<pre class="file" id="file7" style="display: none">package logger
 
 import (
         "fmt"
@@ -804,23 +639,23 @@ import (
 
 var Log *zap.Logger = zap.NewNop()
 
-func Initialize(level string) error <span class="cov0" title="0">{
+func Initialize(level string) error <span class="cov8" title="1">{
         lvl, err := zap.ParseAtomicLevel(level)
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("Failed to initialize logger: %w", err)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to initialize logger: %w", err)
         }</span>
-        <span class="cov0" title="0">cfg := zap.NewProductionConfig()
+        <span class="cov8" title="1">cfg := zap.NewProductionConfig()
         cfg.Level = lvl
         zl, err := cfg.Build()
         if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("Failed to initialize logger: %w", err)
+                return fmt.Errorf("failed to initialize logger: %w", err)
         }</span>
-        <span class="cov0" title="0">Log = zl
+        <span class="cov8" title="1">Log = zl
         return nil</span>
 }
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">package middlewares
+		<pre class="file" id="file8" style="display: none">package middlewares
 
 import (
         "errors"
@@ -831,26 +666,26 @@ import (
         "go.uber.org/zap"
 )
 
-func AuthMiddleware(secretKey string) func(http.Handler) http.Handler <span class="cov0" title="0">{
-        return func(next http.Handler) http.Handler </span><span class="cov0" title="0">{
-                return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+func AuthMiddleware(secretKey string) func(http.Handler) http.Handler <span class="cov8" title="1">{
+        return func(next http.Handler) http.Handler </span><span class="cov8" title="1">{
+                return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
                         // check if userID is exists and is valid
                         _, err := auth.GetUserIDFromRequest(r, secretKey)
-                        if err != nil </span><span class="cov0" title="0">{
+                        if err != nil </span><span class="cov8" title="1">{
                                 if !errors.Is(err, http.ErrNoCookie) </span><span class="cov0" title="0">{
                                         // invalid cookie -&gt; 401 Unauthorized
                                         logger.Log.Error("Received invalid cookie", zap.Error(err))
                                 }</span>
-                                <span class="cov0" title="0">http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+                                <span class="cov8" title="1">http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
                                 return</span>
                         }
-                        <span class="cov0" title="0">next.ServeHTTP(w, r)</span>
+                        <span class="cov8" title="1">next.ServeHTTP(w, r)</span>
                 })
         }
 }
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">package middlewares
+		<pre class="file" id="file9" style="display: none">package middlewares
 
 import (
         "fmt"
@@ -917,7 +752,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) <span class="cov8" t
 }</span>
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">package models
+		<pre class="file" id="file10" style="display: none">package models
 
 import (
         "database/sql/driver"
@@ -949,59 +784,101 @@ type TimeRFC3339 struct {
         time.Time
 }
 
-func (ct TimeRFC3339) MarshalJSON() ([]byte, error) <span class="cov0" title="0">{
-        return []byte(`"` + ct.Time.Format("2006-01-02T15:04:05-07:00") + `"`), nil
-}</span>
+func (ct TimeRFC3339) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
+        if ct.IsZero() </span><span class="cov8" title="1">{
+                return []byte(`"0001-01-01T00:00:00Z"`), nil
+        }</span>
+        <span class="cov8" title="1">return []byte(`"` + ct.Time.Format(time.RFC3339) + `"`), nil</span>
+}
 
-func (ct *TimeRFC3339) UnmarshalJSON(data []byte) error <span class="cov0" title="0">{
+func (ct *TimeRFC3339) UnmarshalJSON(data []byte) error <span class="cov8" title="1">{
         s := strings.Trim(string(data), `"`)
-        t, err := time.Parse("2006-01-02T15:04:05-07:00", s)
-        if err != nil </span><span class="cov0" title="0">{
+        if s == "" || s == "null" </span><span class="cov8" title="1">{
+                ct.Time = time.Time{}
+                return nil
+        }</span>
+        <span class="cov8" title="1">t, err := time.Parse(time.RFC3339, s)
+        if err != nil </span><span class="cov8" title="1">{
                 return err
         }</span>
-        <span class="cov0" title="0">ct.Time = t
+        <span class="cov8" title="1">ct.Time = t
         return nil</span>
 }
 
-func (t *TimeRFC3339) Scan(value interface{}) error <span class="cov0" title="0">{
-        if value == nil </span><span class="cov0" title="0">{
-                t.Time = time.Time{}
+func (ct *TimeRFC3339) Scan(value interface{}) error <span class="cov8" title="1">{
+        if value == nil </span><span class="cov8" title="1">{
+                ct.Time = time.Time{}
                 return nil
         }</span>
-        <span class="cov0" title="0">switch v := value.(type) </span>{
-        case time.Time:<span class="cov0" title="0">
-                t.Time = v
+        <span class="cov8" title="1">switch v := value.(type) </span>{
+        case time.Time:<span class="cov8" title="1">
+                ct.Time = v
                 return nil</span>
-        case string:<span class="cov0" title="0">
-                parsed, err := time.Parse(time.RFC3339, v)
-                if err != nil </span><span class="cov0" title="0">{
+        case string:<span class="cov8" title="1">
+                if v == "" </span><span class="cov8" title="1">{
+                        ct.Time = time.Time{}
+                        return nil
+                }</span>
+                <span class="cov8" title="1">parsed, err := time.Parse(time.RFC3339, v)
+                if err != nil </span><span class="cov8" title="1">{
                         return err
                 }</span>
-                <span class="cov0" title="0">t.Time = parsed
+                <span class="cov8" title="1">ct.Time = parsed
                 return nil</span>
-        default:<span class="cov0" title="0">
+        default:<span class="cov8" title="1">
                 return fmt.Errorf("cannot scan %T into TimeRFC3339", value)</span>
         }
 }
 
 // driver.Valuer to
-func (t TimeRFC3339) Value() (driver.Value, error) <span class="cov0" title="0">{
-        if t.IsZero() </span><span class="cov0" title="0">{
+func (ct TimeRFC3339) Value() (driver.Value, error) <span class="cov8" title="1">{
+        if ct.IsZero() </span><span class="cov8" title="1">{
                 return nil, nil
         }</span>
-        <span class="cov0" title="0">return t.Time, nil</span>
+        <span class="cov8" title="1">return ct.Time, nil</span>
 }
 
 type OrderData struct {
-        Id         int64       `json:"-"`
+        ID         int64       `json:"-"`
         Number     string      `json:"number"`
         Status     OrderStatus `json:"status"`
-        Accrual    int64       `json:"accrual"`
+        Accrual    float64     `json:"accrual"`
         UploadedAt TimeRFC3339 `json:"uploaded_at"`
+}
+
+type ExternalStatus string
+
+const (
+        ExternalStatusREGISTERED = "REGISTERED"
+        ExternalStatusINVALID    = "INVALID"
+        ExternalStatusPROCESSING = "PROCESSING"
+        ExternalStatusPROCESSED  = "PROCESSED"
+)
+
+type AccrualResponse struct {
+        Order   string         `json:"order"`
+        Status  ExternalStatus `json:"status"`
+        Accrual float64        `json:"accrual"`
+}
+
+type BalanceData struct {
+        Current   float64 `json:"current"`
+        Withdrawn float64 `json:"withdrawn"`
+}
+
+type WithdrawRequest struct {
+        Order string  `json:"order"`
+        Sum   float64 `json:"sum"`
+}
+
+type WithdrawData struct {
+        Order       string      `json:"order"`
+        Sum         float64     `json:"sum"`
+        ProcessedAt TimeRFC3339 `json:"processed_at"`
 }
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">package repository
+		<pre class="file" id="file11" style="display: none">package repository
 
 import (
         "context"
@@ -1025,7 +902,7 @@ type dbStorage struct {
 }
 
 func NewDBStorage(dbURL string) (*dbStorage, error) <span class="cov0" title="0">{
-        config := db.NewDbConf(dbURL)
+        config := db.NewDBConf(dbURL)
         storage, err := db.Connect(config)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("Failed to create DB storage: %w", err)
@@ -1059,7 +936,7 @@ func (dbs *dbStorage) runMigrations() error <span class="cov0" title="0">{
 }
 
 // register user
-func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData) (int64, error) <span class="cov0" title="0">{
+func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData) (int64, error) <span class="cov8" title="1">{
         var userID int64
         query := `--sql
         INSERT INTO users (username, password_hash)
@@ -1068,17 +945,17 @@ func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData
                 RETURNING id;
         `
         err := dbs.storage.QueryRowContext(ctx, query, userData.Login, userData.PasswordHash).Scan(&amp;userID)
-        if err != nil </span><span class="cov0" title="0">{
-                if errors.Is(err, sql.ErrNoRows) </span><span class="cov0" title="0">{
-                        return 0, ErrorAlreadyInStorage
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                        return 0, ErrAlreadyInStorage
                 }</span>
-                <span class="cov0" title="0">return 0, fmt.Errorf("Failed to add user to storage: %w", err)</span>
+                <span class="cov8" title="1">return 0, fmt.Errorf("Failed to add user to storage: %w", err)</span>
         }
-        <span class="cov0" title="0">return userID, nil</span>
+        <span class="cov8" title="1">return userID, nil</span>
 }
 
 // check user is present in storage
-func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, string, error) <span class="cov0" title="0">{
+func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, string, error) <span class="cov8" title="1">{
         var userID int64
         var hashedPassword string
         query := `--sql
@@ -1086,17 +963,17 @@ func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, st
                 WHERE username = $1;
         `
         err := dbs.storage.QueryRowContext(ctx, query, username).Scan(&amp;userID, &amp;hashedPassword)
-        if err != nil </span><span class="cov0" title="0">{
-                if errors.Is(err, sql.ErrNoRows) </span><span class="cov0" title="0">{
-                        return 0, "", ErrorUserNotFound
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                        return 0, "", ErrUserNotFound
                 }</span>
-                <span class="cov0" title="0">return 0, "", fmt.Errorf("Failed to get user from storage by id: %w", err)</span>
+                <span class="cov8" title="1">return 0, "", fmt.Errorf("Failed to get user from storage by id: %w", err)</span>
         }
-        <span class="cov0" title="0">return userID, hashedPassword, nil</span>
+        <span class="cov8" title="1">return userID, hashedPassword, nil</span>
 }
 
 // add new order to storage
-func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber string) error <span class="cov0" title="0">{
+func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber string) error <span class="cov8" title="1">{
         var orderID int64
         query := `--sql
         INSERT INTO orders (number, user_id, status)
@@ -1105,90 +982,240 @@ func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber st
                 RETURNING id;
         `
         err := dbs.storage.QueryRowContext(ctx, query, orderNumber, userID, models.StatusNEW).Scan(&amp;orderID)
-        if err == nil </span><span class="cov0" title="0">{
+        if err == nil </span><span class="cov8" title="1">{
                 return nil
         }</span>
-        <span class="cov0" title="0">if !errors.Is(err, sql.ErrNoRows) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if !errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
                 return fmt.Errorf("Failed to add order to storage: %w", err)
         }</span>
-        <span class="cov0" title="0">var recordUserId int64
+        <span class="cov8" title="1">var recordUserID int64
         query = `--sql
                 SELECT user_id FROM orders 
                 WHERE number = $1;
         `
-        err = dbs.storage.QueryRowContext(ctx, query, orderNumber).Scan(&amp;recordUserId)
+        err = dbs.storage.QueryRowContext(ctx, query, orderNumber).Scan(&amp;recordUserID)
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("Failed to select order data from storage: %w", err)
         }</span>
-        <span class="cov0" title="0">if recordUserId != userID </span><span class="cov0" title="0">{
-                return ErrorStorageConflict
+        <span class="cov8" title="1">if recordUserID != userID </span><span class="cov8" title="1">{
+                return ErrStorageConflict
         }</span>
-        <span class="cov0" title="0">return ErrorAlreadyInStorage</span>
+        <span class="cov8" title="1">return ErrAlreadyInStorage</span>
 }
 
 // get all orders by user id
-func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov0" title="0">{
-        query := `SELECT id, number, status, accrual, uploaded_at FROM orders WHERE user_id = $1`
+func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov8" title="1">{
+        query := `SELECT id, number, status, accrual, uploaded_at FROM orders WHERE user_id = $1 ORDER BY uploaded_at DESC`
         rows, err := dbs.storage.QueryContext(ctx, query, userID)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
         }</span>
-        <span class="cov0" title="0">defer rows.Close()
+        <span class="cov8" title="1">if err = rows.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
         var res []models.OrderData
-        for rows.Next() </span><span class="cov0" title="0">{
+        for rows.Next() </span><span class="cov8" title="1">{
                 var orderData models.OrderData
-                if err := rows.Scan(&amp;orderData.Id, &amp;orderData.Number, &amp;orderData.Status, &amp;orderData.Accrual, &amp;orderData.UploadedAt); err != nil </span><span class="cov0" title="0">{
+                if err := rows.Scan(&amp;orderData.ID, &amp;orderData.Number, &amp;orderData.Status, &amp;orderData.Accrual, &amp;orderData.UploadedAt); err != nil </span><span class="cov0" title="0">{
                         return nil, err
                 }</span>
-                <span class="cov0" title="0">res = append(res, orderData)</span>
+                <span class="cov8" title="1">res = append(res, orderData)</span>
         }
-        <span class="cov0" title="0">return res, nil</span>
+        <span class="cov8" title="1">return res, nil</span>
+}
+
+// get balance by user id
+func (dbs *dbStorage) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) <span class="cov8" title="1">{
+        balanceData := &amp;models.BalanceData{}
+        query := `SELECT balance, withdrawn FROM users WHERE id = $1`
+        err := dbs.storage.QueryRowContext(ctx, query, userID).Scan(&amp;balanceData.Current, &amp;balanceData.Withdrawn)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">return balanceData, nil</span>
+}
+
+// withdraw sum by order number
+func (dbs *dbStorage) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error <span class="cov0" title="0">{
+        tx, err := dbs.storage.BeginTx(ctx, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to start database transaction: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer tx.Rollback()
+        var currentBalance float64
+        err = tx.QueryRowContext(ctx,
+                `SELECT balance FROM users WHERE id = $1 FOR UPDATE`,
+                userID,
+        ).Scan(&amp;currentBalance)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov0" title="0">{
+                        return ErrUserNotFound
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to get user balance: %w", err)</span>
+        }
+        <span class="cov0" title="0">if currentBalance &lt; sum </span><span class="cov0" title="0">{
+                return ErrInsufficientFunds
+        }</span>
+        <span class="cov0" title="0">_, err = tx.ExecContext(ctx,
+                `UPDATE users 
+                 SET balance = balance - $1,
+                    withdrawn = withdrawn + $1
+                 WHERE id = $2`,
+                sum, userID,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update user balance: %w", err)
+        }</span>
+        <span class="cov0" title="0">_, err = tx.ExecContext(ctx,
+                `INSERT INTO withdrawals (user_id, order_number, sum, processed_at)
+                 VALUES ($1, $2, $3, NOW())`,
+                userID, orderNumber, sum,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to insert withdrawal: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if err := tx.Commit(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to commit transaction: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// get all withdrawals by user id
+func (dbs *dbStorage) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) <span class="cov8" title="1">{
+        query := `SELECT order_number, sum, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC`
+        rows, err := dbs.storage.QueryContext(ctx, query, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">if err = rows.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+        var res []models.WithdrawData
+        for rows.Next() </span><span class="cov8" title="1">{
+                var withdrawal models.WithdrawData
+                if err := rows.Scan(&amp;withdrawal.Order, &amp;withdrawal.Sum, &amp;withdrawal.ProcessedAt); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">res = append(res, withdrawal)</span>
+        }
+        <span class="cov8" title="1">return res, nil</span>
 }
 
 // get all orders by user id
-func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error <span class="cov0" title="0">{
+func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error <span class="cov8" title="1">{
         query := `UPDATE orders
-                SET status = $1,
-                        pending = FALSE
-                WHERE status = $2 OR pending = TRUE;
+                SET status = $1
+                WHERE status = $2;
         `
         result, err := dbs.storage.ExecContext(ctx, query, models.StatusNEW, models.StatusPROCESSING)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("Failed to reset all statuses: %v", err)
         }</span>
-        <span class="cov0" title="0">rowsAffected, err := result.RowsAffected()
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("Could not get affected rows: %v", err)
         }</span>
-        <span class="cov0" title="0">logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
+        <span class="cov8" title="1">logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
         return nil</span>
 }
 
 // find new orders and mark them as pending
-func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error) <span class="cov0" title="0">{
+func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error) <span class="cov8" title="1">{
         query := `UPDATE orders
-                SET pending = TRUE
-                WHERE status = $1 AND pending = FALSE
+                SET status = $1
+                WHERE status = $2
                 RETURNING id, number, status, accrual, uploaded_at;
         `
-        rows, err := dbs.storage.QueryContext(ctx, query, models.StatusNEW)
-        if err != nil </span><span class="cov0" title="0">{
+        rows, err := dbs.storage.QueryContext(ctx, query, models.StatusPROCESSING, models.StatusNEW)
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
         }</span>
-        <span class="cov0" title="0">defer rows.Close()
+        <span class="cov8" title="1">if err = rows.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
         var res []models.OrderData
-        for rows.Next() </span><span class="cov0" title="0">{
+        for rows.Next() </span><span class="cov8" title="1">{
                 var orderData models.OrderData
-                if err := rows.Scan(&amp;orderData.Id, &amp;orderData.Number, &amp;orderData.Status, &amp;orderData.Accrual, &amp;orderData.UploadedAt); err != nil </span><span class="cov0" title="0">{
+                if err := rows.Scan(&amp;orderData.ID, &amp;orderData.Number, &amp;orderData.Status, &amp;orderData.Accrual, &amp;orderData.UploadedAt); err != nil </span><span class="cov0" title="0">{
                         return nil, err
                 }</span>
-                <span class="cov0" title="0">res = append(res, orderData)</span>
+                <span class="cov8" title="1">res = append(res, orderData)</span>
         }
-        <span class="cov0" title="0">return res, nil</span>
+        <span class="cov8" title="1">return res, nil</span>
+}
+
+// update order status
+func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) error <span class="cov8" title="1">{
+        query := `UPDATE orders
+                SET status = $1
+                WHERE id = $2;
+        `
+        result, err := dbs.storage.ExecContext(ctx, query, status, orderID)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("Failed to update status: %v", err)
+        }</span>
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("Could not get affected rows: %v", err)
+        }</span>
+        <span class="cov8" title="1">logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
+        return nil</span>
+}
+
+// ProcessOrderAccrual updates status and user balance
+func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) (err error) <span class="cov8" title="1">{
+        // start transaction
+        tx, err := dbs.storage.BeginTx(ctx, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to begin transaction: %w", err)
+        }</span>
+        // rollback on error
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                if err != nil </span><span class="cov8" title="1">{
+                        _ = tx.Rollback()
+                }</span>
+        }()
+        // update order status
+        <span class="cov8" title="1">var userID int64
+        queryOrder := `UPDATE orders 
+        SET status = $1, accrual = $2
+        WHERE id = $3 RETURNING user_id`
+        err = tx.QueryRowContext(ctx, queryOrder, models.StatusPROCESSED, accrual, orderID).Scan(&amp;userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("update order failed: %w", err)
+        }</span>
+        // update user balance
+        <span class="cov8" title="1">queryUser := `UPDATE users 
+        SET balance = balance + $1 
+        WHERE id = $2`
+        resUser, err := tx.ExecContext(ctx, queryUser, accrual, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("update user balance failed: %w", err)
+        }</span>
+        <span class="cov8" title="1">rowsAffectedUser, err := resUser.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get user rows affected: %w", err)
+        }</span>
+        <span class="cov8" title="1">if rowsAffectedUser == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("user %d not found", userID)
+        }</span>
+        // commit transaction
+        <span class="cov8" title="1">if err := tx.Commit(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("commit transaction failed: %w", err)
+        }</span>
+        <span class="cov8" title="1">logger.Log.Info("Order accrual processed",
+                zap.Int64("orderID", orderID),
+                zap.Int64("userID", userID),
+                zap.Float64("accrual", accrual))
+        return nil</span>
 }
 </pre>
 		
-		<pre class="file" id="file13" style="display: none">package server
+		<pre class="file" id="file12" style="display: none">package server
 
 import (
         "net/http"
@@ -1206,26 +1233,29 @@ type Server struct {
         http.Server
 }
 
-func NewServer(addr string, h *handlers.Handler, readTimeout, writeTimeout time.Duration, cookieSecret string) *Server <span class="cov0" title="0">{
+func NewServer(addr string, h *handlers.Handler, readTimeout, writeTimeout time.Duration, cookieSecret string) *Server <span class="cov8" title="1">{
         r := chi.NewRouter()
 
         //middlewares
         r.Use(middleware.Recoverer)
         r.Use(middlewares.RequestsLogger)
 
-        r.Route("/api", func(api chi.Router) </span><span class="cov0" title="0">{
+        r.Route("/api/user", func(api chi.Router) </span><span class="cov8" title="1">{
                 // public endpoints
-                api.Post("/user/register", h.RegisterUser)
-                api.Post("/user/login", h.LoginUser)
+                api.Post("/register", h.RegisterUser)
+                api.Post("/login", h.LoginUser)
                 // protected endpoints
-                api.Group(func(protected chi.Router) </span><span class="cov0" title="0">{
+                api.Group(func(protected chi.Router) </span><span class="cov8" title="1">{
                         protected.Use(middlewares.AuthMiddleware(cookieSecret))
-                        protected.Get("/user/orders", h.GetUserOrders)
-                        protected.Post("/user/orders", h.NewOrder)
+                        protected.Get("/orders", h.GetUserOrders)
+                        protected.Post("/orders", h.NewOrder)
+                        protected.Get("/balance", h.GetBalance)
+                        protected.Post("/balance/withdraw", h.Withdraw)
+                        protected.Get("/withdrawals", h.GetUserWithdrawals)
                 }</span>)
         })
 
-        <span class="cov0" title="0">return &amp;Server{
+        <span class="cov8" title="1">return &amp;Server{
                 Server: http.Server{
                         Addr:         addr,
                         Handler:      r,
@@ -1235,407 +1265,50 @@ func NewServer(addr string, h *handlers.Handler, readTimeout, writeTimeout time.
         }</span>
 }
 
-func (s *Server) ListenAndServe() error <span class="cov0" title="0">{
+func (s *Server) ListenAndServe() error <span class="cov8" title="1">{
         logger.Log.Info("Starting server", zap.String("address", s.Addr))
         return s.Server.ListenAndServe()
 }</span>
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">// Code generated by mockery v2.53.6. DO NOT EDIT.
-
-package mocks
-
-import (
-        context "context"
-
-        models "github.com/max-marek-projects/loyalty-system/internal/models"
-        mock "github.com/stretchr/testify/mock"
-)
-
-// Storage is an autogenerated mock type for the Storage type
-type Storage struct {
-        mock.Mock
-}
-
-type Storage_Expecter struct {
-        mock *mock.Mock
-}
-
-func (_m *Storage) EXPECT() *Storage_Expecter <span class="cov0" title="0">{
-        return &amp;Storage_Expecter{mock: &amp;_m.Mock}
-}</span>
-
-// AddOrder provides a mock function with given fields: ctx, userID, orderNumber
-func (_m *Storage) AddOrder(ctx context.Context, userID int64, orderNumber string) error <span class="cov0" title="0">{
-        ret := _m.Called(ctx, userID, orderNumber)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for AddOrder")</span>
-        }
-
-        <span class="cov0" title="0">var r0 error
-        if rf, ok := ret.Get(0).(func(context.Context, int64, string) error); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx, userID, orderNumber)
-        }</span> else<span class="cov0" title="0"> {
-                r0 = ret.Error(0)
-        }</span>
-
-        <span class="cov0" title="0">return r0</span>
-}
-
-// Storage_AddOrder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddOrder'
-type Storage_AddOrder_Call struct {
-        *mock.Call
-}
-
-// AddOrder is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-//   - orderNumber string
-func (_e *Storage_Expecter) AddOrder(ctx interface{}, userID interface{}, orderNumber interface{}) *Storage_AddOrder_Call <span class="cov0" title="0">{
-        return &amp;Storage_AddOrder_Call{Call: _e.mock.On("AddOrder", ctx, userID, orderNumber)}
-}</span>
-
-func (_c *Storage_AddOrder_Call) Run(run func(ctx context.Context, userID int64, orderNumber string)) *Storage_AddOrder_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context), args[1].(int64), args[2].(string))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Storage_AddOrder_Call) Return(_a0 error) *Storage_AddOrder_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0)
-        return _c
-}</span>
-
-func (_c *Storage_AddOrder_Call) RunAndReturn(run func(context.Context, int64, string) error) *Storage_AddOrder_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// CheckUser provides a mock function with given fields: ctx, username
-func (_m *Storage) CheckUser(ctx context.Context, username string) (int64, string, error) <span class="cov0" title="0">{
-        ret := _m.Called(ctx, username)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for CheckUser")</span>
-        }
-
-        <span class="cov0" title="0">var r0 int64
-        var r1 string
-        var r2 error
-        if rf, ok := ret.Get(0).(func(context.Context, string) (int64, string, error)); ok </span><span class="cov0" title="0">{
-                return rf(ctx, username)
-        }</span>
-        <span class="cov0" title="0">if rf, ok := ret.Get(0).(func(context.Context, string) int64); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx, username)
-        }</span> else<span class="cov0" title="0"> {
-                r0 = ret.Get(0).(int64)
-        }</span>
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(1).(func(context.Context, string) string); ok </span><span class="cov0" title="0">{
-                r1 = rf(ctx, username)
-        }</span> else<span class="cov0" title="0"> {
-                r1 = ret.Get(1).(string)
-        }</span>
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(2).(func(context.Context, string) error); ok </span><span class="cov0" title="0">{
-                r2 = rf(ctx, username)
-        }</span> else<span class="cov0" title="0"> {
-                r2 = ret.Error(2)
-        }</span>
-
-        <span class="cov0" title="0">return r0, r1, r2</span>
-}
-
-// Storage_CheckUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckUser'
-type Storage_CheckUser_Call struct {
-        *mock.Call
-}
-
-// CheckUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - username string
-func (_e *Storage_Expecter) CheckUser(ctx interface{}, username interface{}) *Storage_CheckUser_Call <span class="cov0" title="0">{
-        return &amp;Storage_CheckUser_Call{Call: _e.mock.On("CheckUser", ctx, username)}
-}</span>
-
-func (_c *Storage_CheckUser_Call) Run(run func(ctx context.Context, username string)) *Storage_CheckUser_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context), args[1].(string))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Storage_CheckUser_Call) Return(_a0 int64, _a1 string, _a2 error) *Storage_CheckUser_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0, _a1, _a2)
-        return _c
-}</span>
-
-func (_c *Storage_CheckUser_Call) RunAndReturn(run func(context.Context, string) (int64, string, error)) *Storage_CheckUser_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// FindAndClaimNewOrders provides a mock function with given fields: ctx
-func (_m *Storage) FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error) <span class="cov0" title="0">{
-        ret := _m.Called(ctx)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for FindAndClaimNewOrders")</span>
-        }
-
-        <span class="cov0" title="0">var r0 []models.OrderData
-        var r1 error
-        if rf, ok := ret.Get(0).(func(context.Context) ([]models.OrderData, error)); ok </span><span class="cov0" title="0">{
-                return rf(ctx)
-        }</span>
-        <span class="cov0" title="0">if rf, ok := ret.Get(0).(func(context.Context) []models.OrderData); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx)
-        }</span> else<span class="cov0" title="0"> {
-                if ret.Get(0) != nil </span><span class="cov0" title="0">{
-                        r0 = ret.Get(0).([]models.OrderData)
-                }</span>
-        }
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(1).(func(context.Context) error); ok </span><span class="cov0" title="0">{
-                r1 = rf(ctx)
-        }</span> else<span class="cov0" title="0"> {
-                r1 = ret.Error(1)
-        }</span>
-
-        <span class="cov0" title="0">return r0, r1</span>
-}
-
-// Storage_FindAndClaimNewOrders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindAndClaimNewOrders'
-type Storage_FindAndClaimNewOrders_Call struct {
-        *mock.Call
-}
-
-// FindAndClaimNewOrders is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *Storage_Expecter) FindAndClaimNewOrders(ctx interface{}) *Storage_FindAndClaimNewOrders_Call <span class="cov0" title="0">{
-        return &amp;Storage_FindAndClaimNewOrders_Call{Call: _e.mock.On("FindAndClaimNewOrders", ctx)}
-}</span>
-
-func (_c *Storage_FindAndClaimNewOrders_Call) Run(run func(ctx context.Context)) *Storage_FindAndClaimNewOrders_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Storage_FindAndClaimNewOrders_Call) Return(_a0 []models.OrderData, _a1 error) *Storage_FindAndClaimNewOrders_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0, _a1)
-        return _c
-}</span>
-
-func (_c *Storage_FindAndClaimNewOrders_Call) RunAndReturn(run func(context.Context) ([]models.OrderData, error)) *Storage_FindAndClaimNewOrders_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// GetAllOrders provides a mock function with given fields: ctx, userID
-func (_m *Storage) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov0" title="0">{
-        ret := _m.Called(ctx, userID)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for GetAllOrders")</span>
-        }
-
-        <span class="cov0" title="0">var r0 []models.OrderData
-        var r1 error
-        if rf, ok := ret.Get(0).(func(context.Context, int64) ([]models.OrderData, error)); ok </span><span class="cov0" title="0">{
-                return rf(ctx, userID)
-        }</span>
-        <span class="cov0" title="0">if rf, ok := ret.Get(0).(func(context.Context, int64) []models.OrderData); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx, userID)
-        }</span> else<span class="cov0" title="0"> {
-                if ret.Get(0) != nil </span><span class="cov0" title="0">{
-                        r0 = ret.Get(0).([]models.OrderData)
-                }</span>
-        }
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok </span><span class="cov0" title="0">{
-                r1 = rf(ctx, userID)
-        }</span> else<span class="cov0" title="0"> {
-                r1 = ret.Error(1)
-        }</span>
-
-        <span class="cov0" title="0">return r0, r1</span>
-}
-
-// Storage_GetAllOrders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllOrders'
-type Storage_GetAllOrders_Call struct {
-        *mock.Call
-}
-
-// GetAllOrders is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-func (_e *Storage_Expecter) GetAllOrders(ctx interface{}, userID interface{}) *Storage_GetAllOrders_Call <span class="cov0" title="0">{
-        return &amp;Storage_GetAllOrders_Call{Call: _e.mock.On("GetAllOrders", ctx, userID)}
-}</span>
-
-func (_c *Storage_GetAllOrders_Call) Run(run func(ctx context.Context, userID int64)) *Storage_GetAllOrders_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context), args[1].(int64))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Storage_GetAllOrders_Call) Return(_a0 []models.OrderData, _a1 error) *Storage_GetAllOrders_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0, _a1)
-        return _c
-}</span>
-
-func (_c *Storage_GetAllOrders_Call) RunAndReturn(run func(context.Context, int64) ([]models.OrderData, error)) *Storage_GetAllOrders_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// MarkAllProcessingAsNew provides a mock function with given fields: ctx
-func (_m *Storage) MarkAllProcessingAsNew(ctx context.Context) error <span class="cov0" title="0">{
-        ret := _m.Called(ctx)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for MarkAllProcessingAsNew")</span>
-        }
-
-        <span class="cov0" title="0">var r0 error
-        if rf, ok := ret.Get(0).(func(context.Context) error); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx)
-        }</span> else<span class="cov0" title="0"> {
-                r0 = ret.Error(0)
-        }</span>
-
-        <span class="cov0" title="0">return r0</span>
-}
-
-// Storage_MarkAllProcessingAsNew_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkAllProcessingAsNew'
-type Storage_MarkAllProcessingAsNew_Call struct {
-        *mock.Call
-}
-
-// MarkAllProcessingAsNew is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *Storage_Expecter) MarkAllProcessingAsNew(ctx interface{}) *Storage_MarkAllProcessingAsNew_Call <span class="cov0" title="0">{
-        return &amp;Storage_MarkAllProcessingAsNew_Call{Call: _e.mock.On("MarkAllProcessingAsNew", ctx)}
-}</span>
-
-func (_c *Storage_MarkAllProcessingAsNew_Call) Run(run func(ctx context.Context)) *Storage_MarkAllProcessingAsNew_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Storage_MarkAllProcessingAsNew_Call) Return(_a0 error) *Storage_MarkAllProcessingAsNew_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0)
-        return _c
-}</span>
-
-func (_c *Storage_MarkAllProcessingAsNew_Call) RunAndReturn(run func(context.Context) error) *Storage_MarkAllProcessingAsNew_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// RegisterUser provides a mock function with given fields: ctx, userData
-func (_m *Storage) RegisterUser(ctx context.Context, userData models.UserData) (int64, error) <span class="cov0" title="0">{
-        ret := _m.Called(ctx, userData)
-
-        if len(ret) == 0 </span><span class="cov0" title="0">{
-                panic("no return value specified for RegisterUser")</span>
-        }
-
-        <span class="cov0" title="0">var r0 int64
-        var r1 error
-        if rf, ok := ret.Get(0).(func(context.Context, models.UserData) (int64, error)); ok </span><span class="cov0" title="0">{
-                return rf(ctx, userData)
-        }</span>
-        <span class="cov0" title="0">if rf, ok := ret.Get(0).(func(context.Context, models.UserData) int64); ok </span><span class="cov0" title="0">{
-                r0 = rf(ctx, userData)
-        }</span> else<span class="cov0" title="0"> {
-                r0 = ret.Get(0).(int64)
-        }</span>
-
-        <span class="cov0" title="0">if rf, ok := ret.Get(1).(func(context.Context, models.UserData) error); ok </span><span class="cov0" title="0">{
-                r1 = rf(ctx, userData)
-        }</span> else<span class="cov0" title="0"> {
-                r1 = ret.Error(1)
-        }</span>
-
-        <span class="cov0" title="0">return r0, r1</span>
-}
-
-// Storage_RegisterUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterUser'
-type Storage_RegisterUser_Call struct {
-        *mock.Call
-}
-
-// RegisterUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userData models.UserData
-func (_e *Storage_Expecter) RegisterUser(ctx interface{}, userData interface{}) *Storage_RegisterUser_Call <span class="cov0" title="0">{
-        return &amp;Storage_RegisterUser_Call{Call: _e.mock.On("RegisterUser", ctx, userData)}
-}</span>
-
-func (_c *Storage_RegisterUser_Call) Run(run func(ctx context.Context, userData models.UserData)) *Storage_RegisterUser_Call <span class="cov0" title="0">{
-        _c.Call.Run(func(args mock.Arguments) </span><span class="cov0" title="0">{
-                run(args[0].(context.Context), args[1].(models.UserData))
-        }</span>)
-        <span class="cov0" title="0">return _c</span>
-}
-
-func (_c *Storage_RegisterUser_Call) Return(_a0 int64, _a1 error) *Storage_RegisterUser_Call <span class="cov0" title="0">{
-        _c.Call.Return(_a0, _a1)
-        return _c
-}</span>
-
-func (_c *Storage_RegisterUser_Call) RunAndReturn(run func(context.Context, models.UserData) (int64, error)) *Storage_RegisterUser_Call <span class="cov0" title="0">{
-        _c.Call.Return(run)
-        return _c
-}</span>
-
-// NewStorage creates a new instance of Storage. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-// The first argument is typically a *testing.T value.
-func NewStorage(t interface {
-        mock.TestingT
-        Cleanup(func())
-}) *Storage <span class="cov0" title="0">{
-        mock := &amp;Storage{}
-        mock.Mock.Test(t)
-
-        t.Cleanup(func() </span><span class="cov0" title="0">{ mock.AssertExpectations(t) }</span>)
-
-        <span class="cov0" title="0">return mock</span>
-}
-</pre>
-		
-		<pre class="file" id="file15" style="display: none">package service
+		<pre class="file" id="file13" style="display: none">package service
 
 import (
         "context"
+        "encoding/json"
         "errors"
         "fmt"
+        "io"
+        "log"
+        "net/http"
+        "sync"
+        "time"
 
+        "math/rand/v2"
+
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
         "github.com/max-marek-projects/loyalty-system/internal/models"
         "github.com/max-marek-projects/loyalty-system/internal/repository"
         "github.com/max-marek-projects/loyalty-system/internal/utils"
+        "go.uber.org/zap"
         "golang.org/x/crypto/bcrypt"
 )
 
-//go:generate mockery --name=Service --output=../handlers/mocks --filename=service_mock.go --with-expecter
+//go:generate mockery --name=Service --output=../handlers --outpkg=handlers --filename=service_mock_test.go --with-expecter
+//go:generate mockery --name=Service --output=../server --outpkg=server --filename=service_mock_test.go --with-expecter
 type Service interface {
         RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
         LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
         AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error)
         GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error)
-        // StartOrderProcessor(ctx context.Context, maxParallelWorkers int)
+        GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error)
+        Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error
+        GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error)
+        StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool)
 }
 
 func NewEndpointService(storage repository.Storage, accrualSystemAddress string) (Service, error) <span class="cov0" title="0">{
-        service := &amp;endpointService{storage: storage, accrualSystemAddress: accrualSystemAddress}
+        service := &amp;endpointService{storage: storage, accrualSystemAddress: accrualSystemAddress, httpClient: &amp;http.Client{Timeout: 10 * time.Second}}
         err := service.storage.MarkAllProcessingAsNew(context.Background())
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
@@ -1646,269 +1319,346 @@ func NewEndpointService(storage repository.Storage, accrualSystemAddress string)
 type endpointService struct {
         storage              repository.Storage
         accrualSystemAddress string
+        httpClient           *http.Client
 }
 
 // register user in service
-func (service *endpointService) RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov0" title="0">{
+func (service *endpointService) RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov8" title="1">{
         hashed, err := bcrypt.GenerateFromPassword([]byte(userData.Password), bcrypt.DefaultCost)
         if err != nil </span><span class="cov0" title="0">{
                 return 0, fmt.Errorf("Failed to hash password: %v", err)
         }</span>
-        <span class="cov0" title="0">hashedUserData := models.UserData{Login: userData.Login, PasswordHash: string(hashed)}
+        <span class="cov8" title="1">hashedUserData := models.UserData{Login: userData.Login, PasswordHash: string(hashed)}
         userID, err := service.storage.RegisterUser(ctx, hashedUserData)
-        if err != nil </span><span class="cov0" title="0">{
-                if errors.Is(err, repository.ErrorAlreadyInStorage) </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repository.ErrAlreadyInStorage) </span><span class="cov8" title="1">{
                         return 0, ErrorLoginAlreadyTaken
                 }</span>
-                <span class="cov0" title="0">return 0, fmt.Errorf("Failed to register user in storage: %v", err)</span>
+                <span class="cov8" title="1">return 0, fmt.Errorf("Failed to register user in storage: %v", err)</span>
         }
-        <span class="cov0" title="0">return userID, nil</span>
+        <span class="cov8" title="1">return userID, nil</span>
 }
 
 // login user in service
-func (service *endpointService) LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov0" title="0">{
+func (service *endpointService) LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov8" title="1">{
         userID, hashedPassword, err := service.storage.CheckUser(ctx, userData.Login)
-        if err != nil </span><span class="cov0" title="0">{
-                if errors.Is(err, repository.ErrorUserNotFound) </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repository.ErrUserNotFound) </span><span class="cov8" title="1">{
                         return 0, ErrorWrongUsernamePassword
                 }</span>
-                <span class="cov0" title="0">return 0, fmt.Errorf("Failed to check user in storage: %v", err)</span>
+                <span class="cov8" title="1">return 0, fmt.Errorf("Failed to check user in storage: %v", err)</span>
         }
-        <span class="cov0" title="0">err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(userData.Password))
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(userData.Password))
+        if err != nil </span><span class="cov8" title="1">{
                 return 0, ErrorWrongUsernamePassword
         }</span>
-        <span class="cov0" title="0">return userID, nil</span>
+        <span class="cov8" title="1">return userID, nil</span>
 }
 
 // add new order
-func (service *endpointService) AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error) <span class="cov0" title="0">{
+func (service *endpointService) AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error) <span class="cov8" title="1">{
         numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
-        if !numberValid </span><span class="cov0" title="0">{
+        if !numberValid </span><span class="cov8" title="1">{
                 return false, ErrorNumberNotValid
         }</span>
-        <span class="cov0" title="0">err := service.storage.AddOrder(ctx, userID, orderNumber)
-        if err != nil </span><span class="cov0" title="0">{
-                if errors.Is(err, repository.ErrorAlreadyInStorage) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">err := service.storage.AddOrder(ctx, userID, orderNumber)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repository.ErrAlreadyInStorage) </span><span class="cov8" title="1">{
                         return false, nil
                 }</span>
-                <span class="cov0" title="0">if errors.Is(err, repository.ErrorStorageConflict) </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if errors.Is(err, repository.ErrStorageConflict) </span><span class="cov8" title="1">{
                         return false, ErrorOrdersConflict
                 }</span>
-                <span class="cov0" title="0">return false, fmt.Errorf("Failed to check user in storage: %v", err)</span>
+                <span class="cov8" title="1">return false, fmt.Errorf("Failed to check user in storage: %v", err)</span>
         }
-        <span class="cov0" title="0">return true, nil</span>
+        <span class="cov8" title="1">return true, nil</span>
 }
 
-// add new order
-func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov0" title="0">{
+// get all orders
+func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov8" title="1">{
         orders, err := service.storage.GetAllOrders(ctx, userID)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("Failed to get orders from storage: %v", err)
         }</span>
-        <span class="cov0" title="0">return orders, nil</span>
+        <span class="cov8" title="1">return orders, nil</span>
+}
+
+// get balance by user id
+func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) <span class="cov8" title="1">{
+        balance, err := service.storage.GetBalance(ctx, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("Failed to get balance from storage: %v", err)
+        }</span>
+        <span class="cov8" title="1">return balance, nil</span>
+}
+
+// get balance by user id
+func (service *endpointService) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error <span class="cov8" title="1">{
+        numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
+        if !numberValid </span><span class="cov8" title="1">{
+                return ErrorNumberNotValid
+        }</span>
+        <span class="cov8" title="1">err := service.storage.Withdraw(ctx, userID, orderNumber, sum)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repository.ErrInsufficientFunds) </span><span class="cov8" title="1">{
+                        return ErrInsufficientFunds
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("Failed to withdraw in storage: %v", err)</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+// get all user withdrawals
+func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) <span class="cov8" title="1">{
+        withdrawals, err := service.storage.GetAllWithdrawals(ctx, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("Failed to get orders from storage: %v", err)
+        }</span>
+        <span class="cov8" title="1">return withdrawals, nil</span>
 }
 
 // poll storage, find new orders and start jobs to handle them
-// func (service *endpointService) StartOrderProcessor(ctx context.Context, maxParallelWorkers int) {
-//         // Channel for orders to be processed
-//         orderCh := make(chan models.OrderData, maxParallelWorkers)
-//         var wg sync.WaitGroup
-//         for i := 0; i &lt; maxParallelWorkers; i++ {
-//                 wg.Add(1)
-//                 go service.worker(ctx, &amp;wg, orderCh)
-//         }
-//         ticker := time.NewTicker(5 * time.Second)
-//         defer ticker.Stop()
-//         logger.Log.Info("Order processor started", zap.Int("parallelWorkers", maxParallelWorkers), zap.String("accrualSystem", service.accrualSystemAddress))
-//         for {
-//                 select {
-//                 case &lt;-ctx.Done():
-//                         log.Println("Order processor shutting down...")
-//                         close(orderCh)
-//                         wg.Wait()
-//                         logger.Log.Info("Order processor stopped.")
-//                         return
-//                 case &lt;-ticker.C:
-//                         orders, err := service.storage.FindAndClaimNewOrders(ctx)
-//                         if err != nil {
-//                                 logger.Log.Error("Failed to fetch new orders", zap.Error(err))
-//                                 continue
-//                         }
-//                         if len(orders) == 0 {
-//                                 continue
-//                         }
-//                         for _, order := range orders {
-//                                 select {
-//                                 case orderCh &lt;- order:
-//                                 case &lt;-ctx.Done():
-//                                         close(orderCh)
-//                                         wg.Wait()
-//                                         return
-//                                 }
-//                         }
-//                 }
-//         }
-// }
+func (service *endpointService) StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool) <span class="cov8" title="1">{
+        // Channel for orders to be processed
+        orderCh := make(chan models.OrderData, maxParallelWorkers*2)
+        // wait group for all workers to properly finish before exit
+        var wg sync.WaitGroup
+        for i := 0; i &lt; maxParallelWorkers; i++ </span><span class="cov8" title="1">{
+                wg.Add(1)
+                go service.worker(ctx, &amp;wg, orderCh, pollInterval, mockExternalService)
+        }</span>
+        // ticker to parse new orders
+        <span class="cov8" title="1">ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+        defer ticker.Stop()
+        logger.Log.Info("Order processor started", zap.Int("parallelWorkers", maxParallelWorkers), zap.String("accrualSystem", service.accrualSystemAddress))
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-ctx.Done():<span class="cov8" title="1">
+                        log.Println("Order processor shutting down...")
+                        close(orderCh)
+                        wg.Wait()
+                        logger.Log.Info("Order processor stopped.")
+                        return</span>
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        orders, err := service.storage.FindAndClaimNewOrders(ctx)
+                        if err != nil </span><span class="cov0" title="0">{
+                                logger.Log.Error("Failed to fetch new orders", zap.Error(err))
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">if len(orders) == 0 </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">for _, order := range orders </span><span class="cov0" title="0">{
+                                select </span>{
+                                case orderCh &lt;- order:<span class="cov0" title="0"></span>
+                                case &lt;-ctx.Done():<span class="cov0" title="0">
+                                        close(orderCh)
+                                        wg.Wait()
+                                        return</span>
+                                }
+                        }
+                }
+        }
+}
 
 // worker processes orders from the channel by calling the accrual system.
-// func (service *endpointService) worker(
-//         ctx context.Context,
-//         wg *sync.WaitGroup,
-//         orderCh &lt;-chan models.OrderData,
-// ) {
-//         defer wg.Done()
+func (service *endpointService) worker(
+        ctx context.Context,
+        wg *sync.WaitGroup,
+        orderCh chan models.OrderData,
+        pollInterval int,
+        mockExternalService bool,
+) <span class="cov8" title="1">{
+        defer wg.Done()
+        for orderQueueItem := range orderCh </span><span class="cov0" title="0">{
+                result, err := service.parseAccrualSystem(ctx, orderQueueItem, orderCh, pollInterval, mockExternalService)
+                if errors.Is(err, ErrorOrderNotYetProcessed) </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Failed to process order %d: %v", orderQueueItem.ID, err)
+                        // Update order status to "failed" (optional, with error message)
+                        if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.ID, models.StatusINVALID); updateErr != nil </span><span class="cov0" title="0">{
+                                log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
+                        }</span>
+                        <span class="cov0" title="0">continue</span>
+                }
+                <span class="cov0" title="0">if result.Status == models.ExternalStatusINVALID </span><span class="cov0" title="0">{
+                        if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.ID, models.StatusINVALID); updateErr != nil </span><span class="cov0" title="0">{
+                                log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
+                        }</span>
+                        <span class="cov0" title="0">continue</span>
+                }
+                <span class="cov0" title="0">if result.Status == models.ExternalStatusPROCESSED </span><span class="cov0" title="0">{
+                        if updateErr := service.storage.ProcessOrderAccrual(ctx, orderQueueItem.ID, result.Accrual); updateErr != nil </span><span class="cov0" title="0">{
+                                log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
+                        }</span>
+                        <span class="cov0" title="0">continue</span>
+                }
+                <span class="cov0" title="0">logger.Log.Error("Unknown situation occurred. Wrong status", zap.String("status", string(result.Status)))</span>
+        }
+}
 
-//         for order := range orderCh {
-//                 // Process the order (call accrual system, handle retries, etc.)
-//                 response, err := service.parseAccrualSystem(ctx, order)
-//                 if err != nil {
-//                         log.Printf("Failed to process order %s: %v", order.Id, err)
-//                         // Update order status to "failed" (optional, with error message)
-//                         if updateErr := service.storage.UpdateOrderStatus(ctx, order.Id, "failed", err.Error()); updateErr != nil {
-//                                 log.Printf("Failed to update order %s status: %v", order.Id, updateErr)
-//                         }
-//                 } else {
-//                         // Success: mark as processed
-//                         if updateErr := service.storage.UpdateOrderStatus(ctx, order.Id, "processed", ""); updateErr != nil {
-//                                 log.Printf("Failed to update order %s status: %v", order.Id, updateErr)
-//                         }
-//                 }
-//         }
-// }
+// receive response from accrual system
+func (service *endpointService) parseAccrualSystem(
+        ctx context.Context,
+        order models.OrderData,
+        orderCh chan models.OrderData,
+        pollInterval int,
+        mockExternalService bool,
+) (*models.AccrualResponse, error) <span class="cov0" title="0">{
+        if mockExternalService </span><span class="cov0" title="0">{
+                //random accrual
+                accrual := rand.Float64() * 500
+                return &amp;models.AccrualResponse{Order: order.Number, Status: models.ExternalStatusPROCESSED, Accrual: accrual}, nil
+        }</span>
+        // create URL
+        <span class="cov0" title="0">url := fmt.Sprintf("%s/api/orders/%s", service.accrualSystemAddress, order.Number)
+        // create HTTP request with context
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+        // execute request
+        <span class="cov0" title="0">resp, err := service.httpClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, context.DeadlineExceeded) </span><span class="cov0" title="0">{
+                        retryAfter := time.Duration(pollInterval) * time.Second
+                        go func(o models.OrderData, delay time.Duration) </span><span class="cov0" title="0">{
+                                time.Sleep(delay)
+                                select </span>{
+                                case orderCh &lt;- o:<span class="cov0" title="0"></span>
+                                case &lt;-ctx.Done():<span class="cov0" title="0"></span>
+                                }
+                        }(order, retryAfter)
+                        <span class="cov0" title="0">logger.Log.Debug("timeout received", zap.Duration("next attempt in", retryAfter))
+                        return nil, ErrorOrderNotYetProcessed</span>
+                }
+                <span class="cov0" title="0">return nil, fmt.Errorf("request failed: %w", err)</span>
+        }
+        <span class="cov0" title="0">defer resp.Body.Close()
+        // analyze status codes
+        switch resp.StatusCode </span>{
+        case http.StatusOK:<span class="cov0" title="0"> // 200
+                var result models.AccrualResponse
+                if err := json.NewDecoder(resp.Body).Decode(&amp;result); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to decode response: %w", err)
+                }</span>
+                <span class="cov0" title="0">if result.Status == models.ExternalStatusREGISTERED || result.Status == models.ExternalStatusPROCESSING </span><span class="cov0" title="0">{
+                        retryAfter := time.Duration(pollInterval) * time.Second
+                        go func(o models.OrderData, delay time.Duration) </span><span class="cov0" title="0">{
+                                time.Sleep(delay)
+                                select </span>{
+                                case orderCh &lt;- o:<span class="cov0" title="0"></span>
+                                case &lt;-ctx.Done():<span class="cov0" title="0"></span>
+                                }
+                        }(order, retryAfter)
+                        <span class="cov0" title="0">logger.Log.Debug("status shows not yet processed", zap.String("status", string(result.Status)), zap.Duration("next attempt in", retryAfter))
+                        return nil, ErrorOrderNotYetProcessed</span>
+                }
+                <span class="cov0" title="0">return &amp;result, nil</span>
+        case http.StatusNoContent:<span class="cov0" title="0"> // 204
+                retryAfter := time.Duration(pollInterval) * time.Second
+                go func(o models.OrderData, delay time.Duration) </span><span class="cov0" title="0">{
+                        time.Sleep(delay)
+                        select </span>{
+                        case orderCh &lt;- o:<span class="cov0" title="0"></span>
+                        case &lt;-ctx.Done():<span class="cov0" title="0"></span>
+                        }
+                }(order, retryAfter)
+                <span class="cov0" title="0">logger.Log.Debug("status code shows not yet registered", zap.Int("status code", resp.StatusCode), zap.Duration("next attempt in", retryAfter))
+                return nil, ErrorOrderNotYetProcessed</span>
 
-// // receive response from accrual system
-// func (service *endpointService) parseAccrualSystem(
-//         ctx context.Context,
-//         order models.OrderData,
-// ) {
-//         // Формируем URL согласно спецификации
-//         url := fmt.Sprintf("%s/api/orders/%s", baseURL, orderNumber)
+        case http.StatusTooManyRequests:<span class="cov0" title="0"> // 429
+                retryAfterStr := resp.Header.Get("Retry-After")
+                var retryAfter time.Duration
+                if retryAfterStr != "" </span><span class="cov0" title="0">{
+                        retryAfter = utils.ParseRetryAfter(retryAfterStr)
+                }</span> else<span class="cov0" title="0"> {
+                        retryAfter = time.Duration(pollInterval) * time.Second
+                }</span>
+                <span class="cov0" title="0">go func(o models.OrderData, delay time.Duration) </span><span class="cov0" title="0">{
+                        time.Sleep(delay)
+                        select </span>{
+                        case orderCh &lt;- o:<span class="cov0" title="0"></span>
+                        case &lt;-ctx.Done():<span class="cov0" title="0"></span>
+                        }
+                }(order, retryAfter)
+                <span class="cov0" title="0">logger.Log.Debug("status code shows too many requests", zap.Int("status code", resp.StatusCode), zap.Duration("next attempt in", retryAfter))
+                return nil, ErrorOrderNotYetProcessed</span>
 
-//         // Создаём HTTP-запрос с контекстом
-//         req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-//         if err != nil {
-//                 return nil, fmt.Errorf("failed to create request: %w", err)
-//         }
+        case http.StatusInternalServerError:<span class="cov0" title="0"> // 500
+                body, _ := io.ReadAll(resp.Body)
+                return nil, fmt.Errorf("internal server error: %s", string(body))</span>
 
-//         // Выполняем запрос (можно настроить таймауты через контекст или клиент)
-//         client := &amp;http.Client{
-//                 Timeout: 10 * time.Second, // разумный таймаут на всё взаимодействие
-//         }
-//         resp, err := client.Do(req)
-//         if err != nil {
-//                 return nil, fmt.Errorf("request failed: %w", err)
-//         }
-//         defer resp.Body.Close()
-
-//         // Обрабатываем статус-коды
-//         switch resp.StatusCode {
-//         case http.StatusOK: // 200
-//                 var result AccrualResponse
-//                 if err := json.NewDecoder(resp.Body).Decode(&amp;result); err != nil {
-//                         return nil, fmt.Errorf("failed to decode response: %w", err)
-//                 }
-//                 return &amp;result, nil
-
-//         case http.StatusNoContent: // 204
-//                 return nil, ErrNotFound
-
-//         case http.StatusTooManyRequests: // 429
-//                 retryAfterStr := resp.Header.Get("Retry-After")
-//                 var retryAfter int
-//                 if retryAfterStr != "" {
-//                         // Retry-After может быть числом секунд или датой.
-//                         // В спецификации указано число секунд, поэтому пробуем парсить как int.
-//                         if seconds, err := strconv.Atoi(retryAfterStr); err == nil {
-//                                 retryAfter = seconds
-//                         } else {
-//                                 // Если не число – пробуем распарсить HTTP-дату (RFC 1123)
-//                                 if t, err := http.ParseTime(retryAfterStr); err == nil {
-//                                         retryAfter = int(time.Until(t).Seconds())
-//                                         if retryAfter &lt; 0 {
-//                                                 retryAfter = 0
-//                                         }
-//                                 }
-//                         }
-//                 }
-//                 return nil, ErrRateLimit{RetryAfter: retryAfter}
-
-//         case http.StatusInternalServerError: // 500
-//                 return nil, ErrInternalServer
-
-//         default:
-//                 // Неожиданный код ответа
-//                 return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-//         }
-// }
+        default:<span class="cov0" title="0">
+                body, _ := io.ReadAll(resp.Body)
+                return nil, fmt.Errorf("unexpected status code: code = %d, body = %s", resp.StatusCode, body)</span>
+        }
+}
 </pre>
 		
-		<pre class="file" id="file16" style="display: none">package utils
+		<pre class="file" id="file14" style="display: none">package utils
 
 import (
         "strings"
 )
 
 // checks if a given string satisfies the Luhn algorithm.
-func ValidateLuhnAlgorithm(number string) bool <span class="cov0" title="0">{
-        // Remove any spaces from the input string
+func ValidateLuhnAlgorithm(number string) bool <span class="cov8" title="1">{
         number = strings.ReplaceAll(number, " ", "")
-        // Luhn numbers must be at least 2 digits long
-        if len(number) &lt; 2 </span><span class="cov0" title="0">{
+        if len(number) &lt; 2 </span><span class="cov8" title="1">{
                 return false
         }</span>
-        <span class="cov0" title="0">sum := 0
-        shouldDouble := false
-        // Loop from the rightmost digit to the left
-        for i := len(number) - 1; i &gt;= 0; i-- </span><span class="cov0" title="0">{
-                r := number[i]
-                // Ensure the character is a valid digit
-                if r &lt; '0' || r &gt; '9' </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">sum := 0
+        double := false
+        for i := len(number) - 1; i &gt;= 0; i-- </span><span class="cov8" title="1">{
+                ch := number[i]
+                if ch &lt; '0' || ch &gt; '9' </span><span class="cov8" title="1">{
                         return false
                 }</span>
-                <span class="cov0" title="0">digit := int(r - '0')
-                if shouldDouble </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">digit := int(ch - '0')
+                if double </span><span class="cov8" title="1">{
                         digit *= 2
-                        if digit &gt; 9 </span><span class="cov0" title="0">{
+                        if digit &gt; 9 </span><span class="cov8" title="1">{
                                 digit -= 9
                         }</span>
                 }
-                <span class="cov0" title="0">sum += digit
-                shouldDouble = !shouldDouble</span>
+                <span class="cov8" title="1">sum += digit
+                double = !double</span>
         }
-        // The identifier is valid if the sum is a multiple of 10
-        <span class="cov0" title="0">return sum%10 == 0</span>
+        <span class="cov8" title="1">return sum%10 == 0</span>
 }
 </pre>
 		
-		<pre class="file" id="file17" style="display: none">package utils
+		<pre class="file" id="file15" style="display: none">package utils
 
 import (
         "strconv"
         "time"
 )
 
-func ParseRetryAfter(headerVal string) time.Duration <span class="cov0" title="0">{
-        if headerVal == "" </span><span class="cov0" title="0">{
+func ParseRetryAfter(headerVal string) time.Duration <span class="cov8" title="1">{
+        if headerVal == "" </span><span class="cov8" title="1">{
                 return 0
         }</span>
         // Format 1: as delta-seconds (integer)
-        <span class="cov0" title="0">if seconds, err := strconv.Atoi(headerVal); err == nil </span><span class="cov0" title="0">{
-                if seconds &lt; 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if seconds, err := strconv.Atoi(headerVal); err == nil </span><span class="cov8" title="1">{
+                if seconds &lt; 0 </span><span class="cov8" title="1">{
                         return 0
                 }</span>
-                <span class="cov0" title="0">return time.Duration(seconds) * time.Second</span>
+                <span class="cov8" title="1">return time.Duration(seconds) * time.Second</span>
         }
         // Format 2: as an HTTP-date (RFC1123)
-        <span class="cov0" title="0">if targetTime, err := time.Parse(time.RFC1123, headerVal); err == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if targetTime, err := time.Parse(time.RFC1123, headerVal); err == nil </span><span class="cov8" title="1">{
                 waitDuration := time.Until(targetTime)
-                if waitDuration &lt; 0 </span><span class="cov0" title="0">{
+                if waitDuration &lt; 0 </span><span class="cov8" title="1">{
                         return 0
                 }</span>
-                <span class="cov0" title="0">return waitDuration</span>
+                <span class="cov8" title="1">return waitDuration</span>
         }
 
-        <span class="cov0" title="0">return 0</span>
+        <span class="cov8" title="1">return 0</span>
 }
 </pre>
 		

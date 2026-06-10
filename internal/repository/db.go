@@ -287,7 +287,7 @@ func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, stat
 }
 
 // ProcessOrderAccrual updates status and user balance
-func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) error {
+func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) (err error) {
 	// start transaction
 	tx, err := dbs.storage.BeginTx(ctx, nil)
 	if err != nil {

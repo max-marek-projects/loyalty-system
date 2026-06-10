@@ -21,7 +21,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-//go:generate mockery --name=Service --output=../handlers/mocks --filename=service_mock.go --with-expecter
+//go:generate mockery --name=Service --output=../handlers --outpkg=handlers --filename=service_mock_test.go --with-expecter
+//go:generate mockery --name=Service --output=../server --outpkg=server --filename=service_mock_test.go --with-expecter
 type Service interface {
 	RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
 	LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error)

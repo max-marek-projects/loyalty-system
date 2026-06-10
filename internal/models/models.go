@@ -31,12 +31,19 @@ type TimeRFC3339 struct {
 }
 
 func (ct TimeRFC3339) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + ct.Time.Format("2006-01-02T15:04:05-07:00") + `"`), nil
+	if ct.IsZero() {
+		return []byte(`"0001-01-01T00:00:00Z"`), nil
+	}
+	return []byte(`"` + ct.Time.Format(time.RFC3339) + `"`), nil
 }
 
 func (ct *TimeRFC3339) UnmarshalJSON(data []byte) error {
 	s := strings.Trim(string(data), `"`)
-	t, err := time.Parse("2006-01-02T15:04:05-07:00", s)
+	if s == "" || s == "null" {
+		ct.Time = time.Time{}
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		return err
 	}
@@ -54,6 +61,10 @@ func (ct *TimeRFC3339) Scan(value interface{}) error {
 		ct.Time = v
 		return nil
 	case string:
+		if v == "" {
+			ct.Time = time.Time{}
+			return nil
+		}
 		parsed, err := time.Parse(time.RFC3339, v)
 		if err != nil {
 			return err

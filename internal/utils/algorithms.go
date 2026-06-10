@@ -6,31 +6,26 @@ import (
 
 // checks if a given string satisfies the Luhn algorithm.
 func ValidateLuhnAlgorithm(number string) bool {
-	// Remove any spaces from the input string
 	number = strings.ReplaceAll(number, " ", "")
-	// Luhn numbers must be at least 2 digits long
 	if len(number) < 2 {
 		return false
 	}
 	sum := 0
-	shouldDouble := false
-	// Loop from the rightmost digit to the left
+	double := false
 	for i := len(number) - 1; i >= 0; i-- {
-		r := number[i]
-		// Ensure the character is a valid digit
-		if r < '0' || r > '9' {
+		ch := number[i]
+		if ch < '0' || ch > '9' {
 			return false
 		}
-		digit := int(r - '0')
-		if shouldDouble {
+		digit := int(ch - '0')
+		if double {
 			digit *= 2
 			if digit > 9 {
 				digit -= 9
 			}
 		}
 		sum += digit
-		shouldDouble = !shouldDouble
+		double = !double
 	}
-	// The identifier is valid if the sum is a multiple of 10
 	return sum%10 == 0
 }

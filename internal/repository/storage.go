@@ -8,7 +8,7 @@ import (
 
 // Common storage interface
 //
-//go:generate mockery --name=Storage --output=../service/mocks --filename=storage_mock.go --with-expecter
+//go:generate mockery --name=Storage --output=../service --outpkg=service --filename=storage_mock_test.go --with-expecter
 type Storage interface {
 	RegisterUser(ctx context.Context, userData models.UserData) (int64, error)
 	CheckUser(ctx context.Context, username string) (int64, string, error)

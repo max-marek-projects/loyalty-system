@@ -7,11 +7,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/max-marek-projects/loyalty-system/internal/auth"
 	"github.com/stretchr/testify/require"
 )
 
+const secretKey string = "12345"
+const testUserID int64 = 12345
+
 // test single request
-func testRequest(t *testing.T, ts *httptest.Server, method, path, body string) (*http.Response, string) {
+func testRequest(t *testing.T, ts *httptest.Server, method, path, body string, authorize bool) (*http.Response, string) {
 	t.Helper()
 
 	var reader io.Reader
@@ -21,6 +25,14 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path, body string) (
 
 	req, err := http.NewRequest(method, ts.URL+path, reader)
 	require.NoError(t, err)
+
+	if authorize {
+		w := httptest.NewRecorder()
+		err := auth.SetUserCookie(w, testUserID, secretKey)
+		require.NoError(t, err)
+		cookie := w.Result().Cookies()[0]
+		req.AddCookie(cookie)
+	}
 
 	client := ts.Client()
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
