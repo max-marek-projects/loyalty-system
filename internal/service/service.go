@@ -52,7 +52,7 @@ type endpointService struct {
 func (service *endpointService) RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error) {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(userData.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return 0, fmt.Errorf("Failed to hash password: %v", err)
+		return 0, fmt.Errorf("failed to hash password: %v", err)
 	}
 	hashedUserData := models.UserData{Login: userData.Login, PasswordHash: string(hashed)}
 	userID, err := service.storage.RegisterUser(ctx, hashedUserData)
@@ -60,7 +60,7 @@ func (service *endpointService) RegisterUser(ctx context.Context, userData model
 		if errors.Is(err, repository.ErrAlreadyInStorage) {
 			return 0, ErrorLoginAlreadyTaken
 		}
-		return 0, fmt.Errorf("Failed to register user in storage: %v", err)
+		return 0, fmt.Errorf("failed to register user in storage: %v", err)
 	}
 	return userID, nil
 }
@@ -72,7 +72,7 @@ func (service *endpointService) LoginUser(ctx context.Context, userData models.R
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return 0, ErrorWrongUsernamePassword
 		}
-		return 0, fmt.Errorf("Failed to check user in storage: %v", err)
+		return 0, fmt.Errorf("failed to check user in storage: %v", err)
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(userData.Password))
 	if err != nil {
@@ -95,7 +95,7 @@ func (service *endpointService) AddOrder(ctx context.Context, userID int64, orde
 		if errors.Is(err, repository.ErrStorageConflict) {
 			return false, ErrorOrdersConflict
 		}
-		return false, fmt.Errorf("Failed to check user in storage: %v", err)
+		return false, fmt.Errorf("failed to check user in storage: %v", err)
 	}
 	return true, nil
 }
@@ -104,7 +104,7 @@ func (service *endpointService) AddOrder(ctx context.Context, userID int64, orde
 func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) {
 	orders, err := service.storage.GetAllOrders(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get orders from storage: %v", err)
+		return nil, fmt.Errorf("failed to get orders from storage: %v", err)
 	}
 	return orders, nil
 }
@@ -113,7 +113,7 @@ func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) 
 func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) {
 	balance, err := service.storage.GetBalance(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get balance from storage: %v", err)
+		return nil, fmt.Errorf("failed to get balance from storage: %v", err)
 	}
 	return balance, nil
 }
@@ -129,7 +129,7 @@ func (service *endpointService) Withdraw(ctx context.Context, userID int64, orde
 		if errors.Is(err, repository.ErrInsufficientFunds) {
 			return ErrInsufficientFunds
 		}
-		return fmt.Errorf("Failed to withdraw in storage: %v", err)
+		return fmt.Errorf("failed to withdraw in storage: %v", err)
 	}
 	return nil
 }
@@ -138,7 +138,7 @@ func (service *endpointService) Withdraw(ctx context.Context, userID int64, orde
 func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) {
 	withdrawals, err := service.storage.GetAllWithdrawals(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get orders from storage: %v", err)
+		return nil, fmt.Errorf("failed to get orders from storage: %v", err)
 	}
 	return withdrawals, nil
 }
@@ -202,22 +202,22 @@ func (service *endpointService) worker(
 			continue
 		}
 		if err != nil {
-			log.Printf("Failed to process order %d: %v", orderQueueItem.Id, err)
+			log.Printf("Failed to process order %d: %v", orderQueueItem.ID, err)
 			// Update order status to "failed" (optional, with error message)
-			if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.Id, models.StatusINVALID); updateErr != nil {
-				log.Printf("Failed to update order %d status: %v", orderQueueItem.Id, updateErr)
+			if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.ID, models.StatusINVALID); updateErr != nil {
+				log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
 			}
 			continue
 		}
 		if result.Status == models.ExternalStatusINVALID {
-			if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.Id, models.StatusINVALID); updateErr != nil {
-				log.Printf("Failed to update order %d status: %v", orderQueueItem.Id, updateErr)
+			if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.ID, models.StatusINVALID); updateErr != nil {
+				log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
 			}
 			continue
 		}
 		if result.Status == models.ExternalStatusPROCESSED {
-			if updateErr := service.storage.ProcessOrderAccrual(ctx, orderQueueItem.Id, result.Accrual); updateErr != nil {
-				log.Printf("Failed to update order %d status: %v", orderQueueItem.Id, updateErr)
+			if updateErr := service.storage.ProcessOrderAccrual(ctx, orderQueueItem.ID, result.Accrual); updateErr != nil {
+				log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
 			}
 			continue
 		}

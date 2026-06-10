@@ -51,7 +51,7 @@ func TestRegisterUser(t *testing.T) {
 	mockService := mocks.NewService(t)
 	mockService.EXPECT().RegisterUser(mock.Anything, validUserData).Return(registeredUserID, nil)
 	mockService.EXPECT().RegisterUser(mock.Anything, alreadyTakenUserData).Return(0, service.ErrorLoginAlreadyTaken)
-	mockService.EXPECT().RegisterUser(mock.Anything, brokenUserData).Return(0, fmt.Errorf("Some broken data"))
+	mockService.EXPECT().RegisterUser(mock.Anything, brokenUserData).Return(0, fmt.Errorf("some broken data"))
 	mockService.EXPECT().RegisterUser(mock.Anything, validUserCookieErrorData).Return(userIDCookieError, nil)
 
 	ts := httptest.NewServer(newAPITestRouter(mockService))
@@ -135,6 +135,7 @@ func TestRegisterUser(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, _ := testRequest(t, ts, test.method, "/api/user/register", test.request)
+			defer resp.Body.Close()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 		})
 	}
@@ -159,7 +160,7 @@ func TestLoginUser(t *testing.T) {
 	mockService := mocks.NewService(t)
 	mockService.EXPECT().LoginUser(mock.Anything, validUserData).Return(registeredUserID, nil)
 	mockService.EXPECT().LoginUser(mock.Anything, wrongUserData).Return(0, service.ErrorWrongUsernamePassword)
-	mockService.EXPECT().LoginUser(mock.Anything, brokenUserData).Return(0, fmt.Errorf("Some broken data"))
+	mockService.EXPECT().LoginUser(mock.Anything, brokenUserData).Return(0, fmt.Errorf("some broken data"))
 	mockService.EXPECT().LoginUser(mock.Anything, validUserCookieErrorData).Return(userIDCookieError, nil)
 
 	ts := httptest.NewServer(newAPITestRouter(mockService))
@@ -243,6 +244,7 @@ func TestLoginUser(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, _ := testRequest(t, ts, test.method, "/api/user/login", test.request)
+			defer resp.Body.Close()
 			assert.Equal(t, test.want.code, resp.StatusCode)
 		})
 	}

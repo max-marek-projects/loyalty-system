@@ -22,10 +22,10 @@ type dbStorage struct {
 }
 
 func NewDBStorage(dbURL string) (*dbStorage, error) {
-	config := db.NewDbConf(dbURL)
+	config := db.NewDBConf(dbURL)
 	storage, err := db.Connect(config)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create DB storage: %w", err)
+		return nil, fmt.Errorf("failed to create DB storage: %w", err)
 	}
 	dbs := &dbStorage{
 		storage: storage,
@@ -33,7 +33,7 @@ func NewDBStorage(dbURL string) (*dbStorage, error) {
 	}
 	err = dbs.runMigrations()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create DB storage: %w", err)
+		return nil, fmt.Errorf("failed to create DB storage: %w", err)
 	}
 	return dbs, nil
 }
@@ -46,11 +46,11 @@ func (dbs *dbStorage) runMigrations() error {
 		dbs.config.URL,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to run migrations: %w", err)
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	defer m.Close()
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("Failed to run migrations: %w", err)
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	return nil
 }
@@ -69,7 +69,7 @@ func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrAlreadyInStorage
 		}
-		return 0, fmt.Errorf("Failed to add user to storage: %w", err)
+		return 0, fmt.Errorf("failed to add user to storage: %w", err)
 	}
 	return userID, nil
 }
@@ -87,7 +87,7 @@ func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, st
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, "", ErrUserNotFound
 		}
-		return 0, "", fmt.Errorf("Failed to get user from storage by id: %w", err)
+		return 0, "", fmt.Errorf("failed to get user from storage by id: %w", err)
 	}
 	return userID, hashedPassword, nil
 }
@@ -106,18 +106,18 @@ func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber st
 		return nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("Failed to add order to storage: %w", err)
+		return fmt.Errorf("failed to add order to storage: %w", err)
 	}
-	var recordUserId int64
+	var recordUserID int64
 	query = `--sql
 		SELECT user_id FROM orders 
 		WHERE number = $1;
 	`
-	err = dbs.storage.QueryRowContext(ctx, query, orderNumber).Scan(&recordUserId)
+	err = dbs.storage.QueryRowContext(ctx, query, orderNumber).Scan(&recordUserID)
 	if err != nil {
-		return fmt.Errorf("Failed to select order data from storage: %w", err)
+		return fmt.Errorf("failed to select order data from storage: %w", err)
 	}
-	if recordUserId != userID {
+	if recordUserID != userID {
 		return ErrStorageConflict
 	}
 	return ErrAlreadyInStorage
@@ -128,13 +128,13 @@ func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.
 	query := `SELECT id, number, status, accrual, uploaded_at FROM orders WHERE user_id = $1`
 	rows, err := dbs.storage.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	defer rows.Close()
 	var res []models.OrderData
 	for rows.Next() {
 		var orderData models.OrderData
-		if err := rows.Scan(&orderData.Id, &orderData.Number, &orderData.Status, &orderData.Accrual, &orderData.UploadedAt); err != nil {
+		if err := rows.Scan(&orderData.ID, &orderData.Number, &orderData.Status, &orderData.Accrual, &orderData.UploadedAt); err != nil {
 			return nil, err
 		}
 		res = append(res, orderData)
@@ -148,7 +148,7 @@ func (dbs *dbStorage) GetBalance(ctx context.Context, userID int64) (*models.Bal
 	query := `SELECT balance, withdrawn FROM users WHERE id = $1`
 	err := dbs.storage.QueryRowContext(ctx, query, userID).Scan(&balanceData.Current, &balanceData.Withdrawn)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	return balanceData, nil
 }
@@ -204,7 +204,7 @@ func (dbs *dbStorage) GetAllWithdrawals(ctx context.Context, userID int64) ([]mo
 	query := `SELECT order_number, sum, processed_at FROM withdrawals WHERE user_id = $1`
 	rows, err := dbs.storage.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	defer rows.Close()
 	var res []models.WithdrawData
@@ -226,11 +226,11 @@ func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error {
 	`
 	result, err := dbs.storage.ExecContext(ctx, query, models.StatusNEW, models.StatusPROCESSING)
 	if err != nil {
-		return fmt.Errorf("Failed to reset all statuses: %v", err)
+		return fmt.Errorf("failed to reset all statuses: %v", err)
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("Could not get affected rows: %v", err)
+		return fmt.Errorf("could not get affected rows: %v", err)
 	}
 	logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
 	return nil
@@ -245,13 +245,13 @@ func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.Order
 	`
 	rows, err := dbs.storage.QueryContext(ctx, query, models.StatusPROCESSING, models.StatusNEW)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	defer rows.Close()
 	var res []models.OrderData
 	for rows.Next() {
 		var orderData models.OrderData
-		if err := rows.Scan(&orderData.Id, &orderData.Number, &orderData.Status, &orderData.Accrual, &orderData.UploadedAt); err != nil {
+		if err := rows.Scan(&orderData.ID, &orderData.Number, &orderData.Status, &orderData.Accrual, &orderData.UploadedAt); err != nil {
 			return nil, err
 		}
 		res = append(res, orderData)
@@ -260,25 +260,25 @@ func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.Order
 }
 
 // update order status
-func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderId int64, status models.OrderStatus) error {
+func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) error {
 	query := `UPDATE orders
 		SET status = $1
 		WHERE id = $2;
 	`
-	result, err := dbs.storage.ExecContext(ctx, query, status, orderId)
+	result, err := dbs.storage.ExecContext(ctx, query, status, orderID)
 	if err != nil {
-		return fmt.Errorf("Failed to update status: %v", err)
+		return fmt.Errorf("failed to update status: %v", err)
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("Could not get affected rows: %v", err)
+		return fmt.Errorf("could not get affected rows: %v", err)
 	}
 	logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
 	return nil
 }
 
 // ProcessOrderAccrual updates status and user balance
-func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderId int64, accrual float64) error {
+func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) error {
 	// start transaction
 	tx, err := dbs.storage.BeginTx(ctx, nil)
 	if err != nil {
@@ -291,11 +291,11 @@ func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderId int64, ac
 		}
 	}()
 	// update order status
-	var userId int64
+	var userID int64
 	queryOrder := `UPDATE orders 
         SET status = $1, accrual = $2
         WHERE id = $3 RETURNING user_id`
-	err = tx.QueryRowContext(ctx, queryOrder, models.StatusPROCESSED, accrual, orderId).Scan(&userId)
+	err = tx.QueryRowContext(ctx, queryOrder, models.StatusPROCESSED, accrual, orderID).Scan(&userID)
 	if err != nil {
 		return fmt.Errorf("update order failed: %w", err)
 	}
@@ -303,7 +303,7 @@ func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderId int64, ac
 	queryUser := `UPDATE users 
         SET balance = balance + $1 
         WHERE id = $2`
-	resUser, err := tx.ExecContext(ctx, queryUser, accrual, userId)
+	resUser, err := tx.ExecContext(ctx, queryUser, accrual, userID)
 	if err != nil {
 		return fmt.Errorf("update user balance failed: %w", err)
 	}
@@ -312,15 +312,15 @@ func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderId int64, ac
 		return fmt.Errorf("failed to get user rows affected: %w", err)
 	}
 	if rowsAffectedUser == 0 {
-		return fmt.Errorf("user %d not found", userId)
+		return fmt.Errorf("user %d not found", userID)
 	}
 	// commit transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit transaction failed: %w", err)
 	}
 	logger.Log.Info("Order accrual processed",
-		zap.Int64("orderId", orderId),
-		zap.Int64("userId", userId),
+		zap.Int64("orderID", orderID),
+		zap.Int64("userID", userID),
 		zap.Float64("accrual", accrual))
 	return nil
 }

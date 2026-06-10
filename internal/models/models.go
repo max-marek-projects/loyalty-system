@@ -74,7 +74,7 @@ func (t TimeRFC3339) Value() (driver.Value, error) {
 }
 
 type OrderData struct {
-	Id         int64       `json:"-"`
+	ID         int64       `json:"-"`
 	Number     string      `json:"number"`
 	Status     OrderStatus `json:"status"`
 	Accrual    float64     `json:"accrual"`

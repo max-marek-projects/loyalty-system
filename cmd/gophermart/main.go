@@ -26,7 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to initialize logger: %v", err)
 	}
-	store, err := repository.NewDBStorage(configData.DatabaseUri)
+	store, err := repository.NewDBStorage(configData.DatabaseURI)
 	if err != nil {
 		logger.Log.Fatal("Unable to create storage", zap.Error(err))
 	}

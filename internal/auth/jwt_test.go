@@ -19,7 +19,9 @@ func TestSetAndGetUserID(t *testing.T) {
 	err := SetUserCookie(w, userID, testSecret)
 	require.NoError(t, err)
 
-	cookie := w.Result().Cookies()[0]
+	response := w.Result()
+	defer response.Body.Close()
+	cookie := response.Cookies()[0]
 	assert.Equal(t, cookieName, cookie.Name)
 	assert.Equal(t, "/", cookie.Path)
 	assert.True(t, cookie.HttpOnly)

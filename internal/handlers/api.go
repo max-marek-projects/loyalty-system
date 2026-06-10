@@ -126,10 +126,6 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	if len(orders) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
 	prettyJSON, err := json.MarshalIndent(orders, "", "  ")
 	if err != nil {
 		logger.Log.Error("failed to encode response", zap.Error(err))
@@ -137,7 +133,11 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	if len(orders) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
 	_, err = w.Write(prettyJSON)
 	if err != nil {
 		logger.Log.Error("failed to write response", zap.Error(err))
@@ -229,10 +229,6 @@ func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	if len(withdrawals) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
 	prettyJSON, err := json.MarshalIndent(withdrawals, "", "  ")
 	if err != nil {
 		logger.Log.Error("failed to encode response", zap.Error(err))
@@ -240,7 +236,11 @@ func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	if len(withdrawals) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
 	_, err = w.Write(prettyJSON)
 	if err != nil {
 		logger.Log.Error("failed to write response", zap.Error(err))

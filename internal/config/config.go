@@ -15,7 +15,7 @@ type Config struct {
 	ReadTimeout          time.Duration `env:"READ_TIMEOUT"`           // server read timeout in seconds
 	WriteTimeout         time.Duration `env:"WRITE_TIMEOUT"`          // server write timeout in seconds
 	LoggerLevel          string        `env:"LOGGER_LEVEL"`           // logger level DEBUG / INFO / WARNING / ERROR / FATAL
-	DatabaseUri          string        `env:"DATABASE_URI"`           // database connection url
+	DatabaseURI          string        `env:"DATABASE_URI"`           // database connection url
 	CookieSecret         string        `env:"COOKIE_SECRET"`          // secret for cookie signature
 	MaxParallelWorkers   int           `env:"MAX_PARALLEL_WORKERS"`   // max amount of parallel workers
 	PollInterval         int           `env:"POLL_INTERVAL"`          // external system poll interval
@@ -38,7 +38,7 @@ func LoadConfig() *Config {
 	// read flags directly to config
 	flag.StringVar(&config.RunAddr, "a", ":8080", "address and port to run server")
 	flag.StringVar(&config.LoggerLevel, "l", "INFO", "logger level")
-	flag.StringVar(&config.DatabaseUri, "d", "", "database connection url")
+	flag.StringVar(&config.DatabaseURI, "d", "", "database connection url")
 	flag.StringVar(&config.CookieSecret, "s", "", "cookie signing secret")
 	flag.IntVar(&config.MaxParallelWorkers, "p", 5, "maximum amount of parallel workers")
 	flag.StringVar(&config.AccrualSystemAddress, "r", "", "maximum concurrent parallel operations")

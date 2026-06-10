@@ -49,7 +49,7 @@ func extractUserIDFromToken(token string, secretKey string) (int64, error) {
 		return []byte(secretKey), nil
 	})
 	if err != nil {
-		return 0, fmt.Errorf("Failed to parse jwt: %v", err)
+		return 0, fmt.Errorf("failed to parse jwt: %v", err)
 	}
 	if !tokenData.Valid {
 		return 0, errors.New("invalid token")

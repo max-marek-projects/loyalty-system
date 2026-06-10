@@ -415,9 +415,9 @@ func (_c *Storage_MarkAllProcessingAsNew_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// ProcessOrderAccrual provides a mock function with given fields: ctx, orderId, accrual
-func (_m *Storage) ProcessOrderAccrual(ctx context.Context, orderId int64, accrual float64) error {
-	ret := _m.Called(ctx, orderId, accrual)
+// ProcessOrderAccrual provides a mock function with given fields: ctx, orderID, accrual
+func (_m *Storage) ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) error {
+	ret := _m.Called(ctx, orderID, accrual)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ProcessOrderAccrual")
@@ -425,7 +425,7 @@ func (_m *Storage) ProcessOrderAccrual(ctx context.Context, orderId int64, accru
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, int64, float64) error); ok {
-		r0 = rf(ctx, orderId, accrual)
+		r0 = rf(ctx, orderID, accrual)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -440,13 +440,13 @@ type Storage_ProcessOrderAccrual_Call struct {
 
 // ProcessOrderAccrual is a helper method to define mock.On call
 //   - ctx context.Context
-//   - orderId int64
+//   - orderID int64
 //   - accrual float64
-func (_e *Storage_Expecter) ProcessOrderAccrual(ctx interface{}, orderId interface{}, accrual interface{}) *Storage_ProcessOrderAccrual_Call {
-	return &Storage_ProcessOrderAccrual_Call{Call: _e.mock.On("ProcessOrderAccrual", ctx, orderId, accrual)}
+func (_e *Storage_Expecter) ProcessOrderAccrual(ctx interface{}, orderID interface{}, accrual interface{}) *Storage_ProcessOrderAccrual_Call {
+	return &Storage_ProcessOrderAccrual_Call{Call: _e.mock.On("ProcessOrderAccrual", ctx, orderID, accrual)}
 }
 
-func (_c *Storage_ProcessOrderAccrual_Call) Run(run func(ctx context.Context, orderId int64, accrual float64)) *Storage_ProcessOrderAccrual_Call {
+func (_c *Storage_ProcessOrderAccrual_Call) Run(run func(ctx context.Context, orderID int64, accrual float64)) *Storage_ProcessOrderAccrual_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(int64), args[2].(float64))
 	})
@@ -520,9 +520,9 @@ func (_c *Storage_RegisterUser_Call) RunAndReturn(run func(context.Context, mode
 	return _c
 }
 
-// UpdateOrderStatus provides a mock function with given fields: ctx, orderId, status
-func (_m *Storage) UpdateOrderStatus(ctx context.Context, orderId int64, status models.OrderStatus) error {
-	ret := _m.Called(ctx, orderId, status)
+// UpdateOrderStatus provides a mock function with given fields: ctx, orderID, status
+func (_m *Storage) UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) error {
+	ret := _m.Called(ctx, orderID, status)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateOrderStatus")
@@ -530,7 +530,7 @@ func (_m *Storage) UpdateOrderStatus(ctx context.Context, orderId int64, status 
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, int64, models.OrderStatus) error); ok {
-		r0 = rf(ctx, orderId, status)
+		r0 = rf(ctx, orderID, status)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -545,13 +545,13 @@ type Storage_UpdateOrderStatus_Call struct {
 
 // UpdateOrderStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - orderId int64
+//   - orderID int64
 //   - status models.OrderStatus
-func (_e *Storage_Expecter) UpdateOrderStatus(ctx interface{}, orderId interface{}, status interface{}) *Storage_UpdateOrderStatus_Call {
-	return &Storage_UpdateOrderStatus_Call{Call: _e.mock.On("UpdateOrderStatus", ctx, orderId, status)}
+func (_e *Storage_Expecter) UpdateOrderStatus(ctx interface{}, orderID interface{}, status interface{}) *Storage_UpdateOrderStatus_Call {
+	return &Storage_UpdateOrderStatus_Call{Call: _e.mock.On("UpdateOrderStatus", ctx, orderID, status)}
 }
 
-func (_c *Storage_UpdateOrderStatus_Call) Run(run func(ctx context.Context, orderId int64, status models.OrderStatus)) *Storage_UpdateOrderStatus_Call {
+func (_c *Storage_UpdateOrderStatus_Call) Run(run func(ctx context.Context, orderID int64, status models.OrderStatus)) *Storage_UpdateOrderStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(int64), args[2].(models.OrderStatus))
 	})

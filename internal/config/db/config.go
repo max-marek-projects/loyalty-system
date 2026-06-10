@@ -10,9 +10,9 @@ type DBConf struct {
 	MigrationsPath  string        // path to folder with migrations files
 }
 
-func NewDbConf(dbUrl string) *DBConf {
+func NewDBConf(dbURL string) *DBConf {
 	return &DBConf{
-		URL:             dbUrl,
+		URL:             dbURL,
 		MaxOpenConns:    10,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: 5 * time.Minute,

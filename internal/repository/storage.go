@@ -21,6 +21,6 @@ type Storage interface {
 	// background processes
 	MarkAllProcessingAsNew(ctx context.Context) error
 	FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error)
-	UpdateOrderStatus(ctx context.Context, orderId int64, status models.OrderStatus) error
-	ProcessOrderAccrual(ctx context.Context, orderId int64, accrual float64) error
+	UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) error
+	ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) error
 }
