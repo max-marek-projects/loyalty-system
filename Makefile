@@ -12,3 +12,6 @@ run:
 
 mocks:
 	go generate ./...
+
+lint:
+	go vet -vettool=$(which statictest) ./...

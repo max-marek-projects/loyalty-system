@@ -81,11 +81,6 @@ type OrderData struct {
 	UploadedAt TimeRFC3339 `json:"uploaded_at"`
 }
 
-type OrderQueue struct {
-	Order         OrderData
-	NextAttemptAt time.Time
-}
-
 type ExternalStatus string
 
 const (
