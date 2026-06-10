@@ -44,21 +44,21 @@ func (ct *TimeRFC3339) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (t *TimeRFC3339) Scan(value interface{}) error {
+func (ct *TimeRFC3339) Scan(value interface{}) error {
 	if value == nil {
-		t.Time = time.Time{}
+		ct.Time = time.Time{}
 		return nil
 	}
 	switch v := value.(type) {
 	case time.Time:
-		t.Time = v
+		ct.Time = v
 		return nil
 	case string:
 		parsed, err := time.Parse(time.RFC3339, v)
 		if err != nil {
 			return err
 		}
-		t.Time = parsed
+		ct.Time = parsed
 		return nil
 	default:
 		return fmt.Errorf("cannot scan %T into TimeRFC3339", value)
@@ -66,11 +66,11 @@ func (t *TimeRFC3339) Scan(value interface{}) error {
 }
 
 // driver.Valuer to
-func (t TimeRFC3339) Value() (driver.Value, error) {
-	if t.IsZero() {
+func (ct TimeRFC3339) Value() (driver.Value, error) {
+	if ct.IsZero() {
 		return nil, nil
 	}
-	return t.Time, nil
+	return ct.Time, nil
 }
 
 type OrderData struct {
