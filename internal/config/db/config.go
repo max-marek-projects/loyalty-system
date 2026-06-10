@@ -1,7 +1,9 @@
+// Package db provides database configuration.
 package db
 
 import "time"
 
+// DBConf holds database connection configuration (URL, pool limits, migrations path).
 type DBConf struct {
 	URL             string        // database connection url
 	MaxOpenConns    int           // max amount of opened database connections
@@ -10,6 +12,10 @@ type DBConf struct {
 	MigrationsPath  string        // path to folder with migrations files
 }
 
+// NewDBConf creates a DBConf with default connection pool settings and the given database URL.
+// Parameters:
+//   - dbURL: database connection string.
+// Returns a pointer to the initialized DBConf.
 func NewDBConf(dbURL string) *DBConf {
 	return &DBConf{
 		URL:             dbURL,

@@ -1,3 +1,4 @@
+// Package config provides configuration loading from environment variables, .env file, and command-line flags.
 package config
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Config holds all application configuration parameters.
 type Config struct {
 	RunAddr              string        `env:"RUN_ADDRESS"`            // address and port to run server
 	ReadTimeout          time.Duration `env:"READ_TIMEOUT"`           // server read timeout in seconds
@@ -23,7 +25,8 @@ type Config struct {
 	AccrualSystemAddress string        `env:"ACCRUAL_SYSTEM_ADDRESS"` // loyalty calculation system address
 }
 
-// parse all flags from command line
+// LoadConfig parses configuration from .env, environment variables, and command-line flags.
+// Returns a pointer to the populated Config struct.
 func LoadConfig() *Config {
 	var config Config
 

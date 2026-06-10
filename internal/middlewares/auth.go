@@ -1,3 +1,4 @@
+// Package middlewares provides HTTP middleware components for request processing.
 package middlewares
 
 import (
@@ -9,6 +10,11 @@ import (
 	"go.uber.org/zap"
 )
 
+// AuthMiddleware returns a middleware that validates the JWT cookie.
+// Parameters:
+//   - secretKey: key used to verify the JWT signature.
+//
+// Returns a middleware function that rejects requests without a valid cookie.
 func AuthMiddleware(secretKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

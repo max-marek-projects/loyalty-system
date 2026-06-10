@@ -23,6 +23,8 @@ import (
 
 //go:generate mockery --name=Service --output=../handlers --outpkg=handlers --filename=service_mock_test.go --with-expecter
 //go:generate mockery --name=Service --output=../server --outpkg=server --filename=service_mock_test.go --with-expecter
+
+// Service defines the business logic interface for the loyalty system.
 type Service interface {
 	RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
 	LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
@@ -34,6 +36,12 @@ type Service interface {
 	StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool)
 }
 
+// NewEndpointService creates a service instance with the given storage and accrual system address.
+// Parameters:
+//   - storage: repository implementation.
+//   - accrualSystemAddress: base URL of the external accrual system.
+//
+// Returns the service or an error if resetting statuses fails.
 func NewEndpointService(storage repository.Storage, accrualSystemAddress string) (Service, error) {
 	service := &endpointService{storage: storage, accrualSystemAddress: accrualSystemAddress, httpClient: &http.Client{Timeout: 10 * time.Second}}
 	err := service.storage.MarkAllProcessingAsNew(context.Background())
@@ -49,7 +57,8 @@ type endpointService struct {
 	httpClient           *http.Client
 }
 
-// register user in service
+// RegisterUser creates a new user with hashed password.
+// Returns ErrorLoginAlreadyTaken if login already exists.
 func (service *endpointService) RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error) {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(userData.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -66,7 +75,8 @@ func (service *endpointService) RegisterUser(ctx context.Context, userData model
 	return userID, nil
 }
 
-// login user in service
+// LoginUser validates credentials and returns user ID.
+// Returns ErrorWrongUsernamePassword if login or password is incorrect.
 func (service *endpointService) LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error) {
 	userID, hashedPassword, err := service.storage.CheckUser(ctx, userData.Login)
 	if err != nil {
@@ -82,7 +92,9 @@ func (service *endpointService) LoginUser(ctx context.Context, userData models.R
 	return userID, nil
 }
 
-// add new order
+// AddOrder validates order number via Luhn and stores it.
+// Returns (true, nil) if new order added, (false, nil) if order already exists for this user,
+// or error (ErrorNumberNotValid, ErrorOrdersConflict).
 func (service *endpointService) AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error) {
 	numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
 	if !numberValid {
@@ -101,7 +113,7 @@ func (service *endpointService) AddOrder(ctx context.Context, userID int64, orde
 	return true, nil
 }
 
-// get all orders
+// GetAllOrders returns all orders belonging to a user.
 func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) {
 	orders, err := service.storage.GetAllOrders(ctx, userID)
 	if err != nil {
@@ -110,7 +122,7 @@ func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) 
 	return orders, nil
 }
 
-// get balance by user id
+// GetBalance returns the user's current balance and total withdrawn.
 func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) {
 	balance, err := service.storage.GetBalance(ctx, userID)
 	if err != nil {
@@ -119,7 +131,8 @@ func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*
 	return balance, nil
 }
 
-// get balance by user id
+// Withdraw processes a withdrawal after Luhn validation.
+// Returns ErrorNumberNotValid or ErrInsufficientFunds.
 func (service *endpointService) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error {
 	numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
 	if !numberValid {
@@ -135,7 +148,7 @@ func (service *endpointService) Withdraw(ctx context.Context, userID int64, orde
 	return nil
 }
 
-// get all user withdrawals
+// GetAllWithdrawals returns all withdrawal records for a user.
 func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) {
 	withdrawals, err := service.storage.GetAllWithdrawals(ctx, userID)
 	if err != nil {
@@ -144,7 +157,11 @@ func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID in
 	return withdrawals, nil
 }
 
-// poll storage, find new orders and start jobs to handle them
+// StartOrderProcessor launches background workers to poll the accrual system.
+// Parameters:
+//   - maxParallelWorkers: number of concurrent workers.
+//   - pollInterval: seconds between scanning for new orders.
+//   - mockExternalService: if true, uses mock accrual logic.
 func (service *endpointService) StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool) {
 	// Channel for orders to be processed
 	orderCh := make(chan models.OrderData, maxParallelWorkers*2)
@@ -226,7 +243,8 @@ func (service *endpointService) worker(
 	}
 }
 
-// receive response from accrual system
+// parseAccrualSystem contacts external system or mock, returns accrual response.
+// Returns ErrorOrderNotYetProcessed if order is not ready and should be retried.
 func (service *endpointService) parseAccrualSystem(
 	ctx context.Context,
 	order models.OrderData,

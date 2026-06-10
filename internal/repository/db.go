@@ -12,15 +12,21 @@ import (
 	"github.com/max-marek-projects/loyalty-system/internal/models"
 	"go.uber.org/zap"
 
-	_ "github.com/golang-migrate/migrate/v4/database/postgres" // required for migrations
-	_ "github.com/golang-migrate/migrate/v4/source/file"       // required for migrations
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
+// dbStorage implements Storage interface using PostgreSQL.
 type dbStorage struct {
 	storage *sql.DB
 	config  *db.DBConf
 }
 
+// NewDBStorage creates a new database storage instance and runs migrations.
+// Parameters:
+//   - dbURL: PostgreSQL connection string.
+//
+// Returns the storage instance or an error if connection or migration fails.
 func NewDBStorage(dbURL string) (*dbStorage, error) {
 	config := db.NewDBConf(dbURL)
 	storage, err := db.Connect(config)
@@ -38,7 +44,7 @@ func NewDBStorage(dbURL string) (*dbStorage, error) {
 	return dbs, nil
 }
 
-// run database migrations
+// runMigrations applies database migrations from the configured path.
 func (dbs *dbStorage) runMigrations() error {
 	logger.Log.Info("Running migrations", zap.String("path", dbs.config.MigrationsPath))
 	m, err := migrate.New(
@@ -55,7 +61,11 @@ func (dbs *dbStorage) runMigrations() error {
 	return nil
 }
 
-// register user
+// RegisterUser inserts a new user into the database.
+// Parameters:
+//   - userData: login and hashed password.
+//
+// Returns the new user ID or error (ErrAlreadyInStorage if login exists).
 func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData) (int64, error) {
 	var userID int64
 	query := `--sql
@@ -74,7 +84,8 @@ func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData
 	return userID, nil
 }
 
-// check user is present in storage
+// CheckUser retrieves user ID and hashed password by login.
+// Returns ErrUserNotFound if the login does not exist.
 func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, string, error) {
 	var userID int64
 	var hashedPassword string
@@ -92,7 +103,9 @@ func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, st
 	return userID, hashedPassword, nil
 }
 
-// add new order to storage
+// AddOrder inserts a new order for a user, or returns existing order conflict.
+// Returns ErrAlreadyInStorage if order already belongs to the same user,
+// ErrStorageConflict if order belongs to another user.
 func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber string) error {
 	var orderID int64
 	query := `--sql
@@ -123,7 +136,7 @@ func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber st
 	return ErrAlreadyInStorage
 }
 
-// get all orders by user id
+// GetAllOrders returns all orders for a given user, ordered by upload time descending.
 func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) {
 	query := `SELECT id, number, status, accrual, uploaded_at FROM orders WHERE user_id = $1 ORDER BY uploaded_at DESC`
 	rows, err := dbs.storage.QueryContext(ctx, query, userID)
@@ -145,7 +158,7 @@ func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.
 	return res, nil
 }
 
-// get balance by user id
+// GetBalance returns the user's current balance and total withdrawn amount.
 func (dbs *dbStorage) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) {
 	balanceData := &models.BalanceData{}
 	query := `SELECT balance, withdrawn FROM users WHERE id = $1`
@@ -156,7 +169,8 @@ func (dbs *dbStorage) GetBalance(ctx context.Context, userID int64) (*models.Bal
 	return balanceData, nil
 }
 
-// withdraw sum by order number
+// Withdraw processes a withdrawal using a transaction.
+// Returns ErrInsufficientFunds if balance is insufficient.
 func (dbs *dbStorage) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error {
 	tx, err := dbs.storage.BeginTx(ctx, nil)
 	if err != nil {
@@ -202,7 +216,7 @@ func (dbs *dbStorage) Withdraw(ctx context.Context, userID int64, orderNumber st
 	return nil
 }
 
-// get all withdrawals by user id
+// GetAllWithdrawals returns all withdrawal records for a user.
 func (dbs *dbStorage) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) {
 	query := `SELECT order_number, sum, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC`
 	rows, err := dbs.storage.QueryContext(ctx, query, userID)
@@ -224,7 +238,7 @@ func (dbs *dbStorage) GetAllWithdrawals(ctx context.Context, userID int64) ([]mo
 	return res, nil
 }
 
-// get all orders by user id
+// MarkAllProcessingAsNew resets all orders with status PROCESSING to NEW (e.g., after restart).
 func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error {
 	query := `UPDATE orders
 		SET status = $1
@@ -242,7 +256,7 @@ func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error {
 	return nil
 }
 
-// find new orders and mark them as pending
+// FindAndClaimNewOrders selects orders with status NEW, sets them to PROCESSING, and returns them.
 func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error) {
 	query := `UPDATE orders
 		SET status = $1
@@ -268,7 +282,7 @@ func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.Order
 	return res, nil
 }
 
-// update order status
+// UpdateOrderStatus changes the status of an order by its ID.
 func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) error {
 	query := `UPDATE orders
 		SET status = $1
@@ -286,7 +300,7 @@ func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, stat
 	return nil
 }
 
-// ProcessOrderAccrual updates status and user balance
+// ProcessOrderAccrual updates order status to PROCESSED, adds accrual to user balance (transactional).
 func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) (err error) {
 	// start transaction
 	tx, err := dbs.storage.BeginTx(ctx, nil)

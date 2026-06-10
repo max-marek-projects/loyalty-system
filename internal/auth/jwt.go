@@ -1,3 +1,4 @@
+// Package auth provides JWT-based authentication using HTTP cookies.
 package auth
 
 import (
@@ -13,12 +14,19 @@ import (
 
 const cookieName = "token"
 
+// Claims represents the JWT claims containing a user ID.
 type Claims struct {
 	jwt.RegisteredClaims
-	UserID int64
+	UserID int64 // Unique user identifier.
 }
 
-// create jwt and set it to cookie
+// SetUserCookie creates a signed JWT for the given user ID and sets it as an HTTP cookie.
+// Parameters:
+//   - w: ResponseWriter to write the cookie.
+//   - userID: ID to embed in the token.
+//   - secretKey: key used for signing.
+//
+// Returns an error if token signing fails.
 func SetUserCookie(w http.ResponseWriter, userID int64, secretKey string) error {
 	logger.Log.Info("Signing token with key", zap.String("key", secretKey))
 	claims := Claims{
@@ -43,6 +51,12 @@ func SetUserCookie(w http.ResponseWriter, userID int64, secretKey string) error 
 	return nil
 }
 
+// extractUserIDFromToken parses a JWT string, validates its signature, and returns the user ID.
+// Parameters:
+//   - token: raw JWT string.
+//   - secretKey: key for signature verification.
+//
+// Returns the user ID on success or an error if parsing or validation fails.
 func extractUserIDFromToken(token string, secretKey string) (int64, error) {
 	claims := &Claims{}
 	tokenData, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
@@ -57,7 +71,12 @@ func extractUserIDFromToken(token string, secretKey string) (int64, error) {
 	return claims.UserID, nil
 }
 
-// get user id from request cookie
+// GetUserIDFromRequest extracts the JWT from the request cookie and returns the user ID.
+// Parameters:
+//   - r: HTTP request containing the cookie.
+//   - secretKey: key to verify the token.
+//
+// Returns the user ID or an error if the cookie is missing, token is invalid, or signature fails.
 func GetUserIDFromRequest(r *http.Request, secretKey string) (int64, error) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {

@@ -1,10 +1,12 @@
+// Package utils provides helper functions for validation and parsing.
 package utils
 
 import (
 	"strings"
 )
 
-// checks if a given string satisfies the Luhn algorithm.
+// ValidateLuhnAlgorithm checks if a number string satisfies the Luhn algorithm (mod 10).
+// Returns true for valid credit card‑style numbers, false otherwise.
 func ValidateLuhnAlgorithm(number string) bool {
 	number = strings.ReplaceAll(number, " ", "")
 	if len(number) < 2 {

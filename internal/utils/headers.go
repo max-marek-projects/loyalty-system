@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// ParseRetryAfter converts a Retry-After header value (seconds or RFC1123 date) into a time.Duration.
+// Returns 0 if parsing fails or if the duration is in the past.
 func ParseRetryAfter(headerVal string) time.Duration {
 	if headerVal == "" {
 		return 0

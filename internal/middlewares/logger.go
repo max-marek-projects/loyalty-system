@@ -9,6 +9,11 @@ import (
 	"go.uber.org/zap"
 )
 
+// RequestsLogger is a middleware that logs each HTTP request's URI, method, status, duration, and response size.
+// Parameters:
+//   - h: the next http.Handler in the chain.
+//
+// Returns an http.Handler that performs logging before delegating.
 func RequestsLogger(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -38,18 +43,20 @@ func RequestsLogger(h http.Handler) http.Handler {
 }
 
 type (
-	responseData struct { // response data storage
+	// responseData holds HTTP response status code and body size for logging.
+	responseData struct {
 		status int
 		size   int
 	}
 
-	// response data writer
+	// loggingResponseWriter wraps http.ResponseWriter to capture status code and body size.
 	loggingResponseWriter struct {
 		http.ResponseWriter
 		responseData *responseData
 	}
 )
 
+// Write captures the number of bytes written and delegates to the underlying ResponseWriter.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
@@ -59,6 +66,7 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	return size, err
 }
 
+// WriteHeader captures the status code and delegates to the underlying ResponseWriter.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode

@@ -1,3 +1,4 @@
+// Package handlers provides HTTP handlers for the loyalty system API.
 package handlers
 
 import (
@@ -13,7 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// register user in service
+// RegisterUser handles user registration.
+// Reads login/password from JSON, creates a user, and sets an auth cookie.
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	var requestData models.RegisterRequest
@@ -44,7 +46,8 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// login user in service
+// LoginUser handles user login.
+// Validates credentials and sets an auth cookie on success.
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	var requestData models.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
@@ -74,7 +77,8 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// add new order number
+// NewOrder adds a new order number for the authenticated user.
+// Reads the order number from request body and validates it.
 func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil || len(body) == 0 {
@@ -112,7 +116,8 @@ func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// get all orders for current user
+// GetUserOrders returns all orders belonging to the authenticated user.
+// Responds with JSON array or 204 No Content if none exist.
 func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 	userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
 	if err != nil {
@@ -147,7 +152,8 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// get current user balance
+// GetBalance returns the current user's loyalty balance.
+// Responds with JSON containing current balance and withdrawn amount.
 func (h *Handler) GetBalance(w http.ResponseWriter, r *http.Request) {
 	userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
 	if err != nil {
@@ -177,7 +183,8 @@ func (h *Handler) GetBalance(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// withdraw
+// Withdraw handles a withdrawal request from the user's balance.
+// Validates order number and sum, then processes the withdrawal.
 func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	var withdrawData models.WithdrawRequest
 	if err := json.NewDecoder(r.Body).Decode(&withdrawData); err != nil {
@@ -216,7 +223,8 @@ func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// get all user withdrawals
+// GetUserWithdrawals returns all withdrawal transactions for the authenticated user.
+// Responds with JSON array or 204 No Content if none exist.
 func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) {
 	userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
 	if err != nil {

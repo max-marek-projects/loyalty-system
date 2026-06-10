@@ -1,3 +1,4 @@
+// Package db provides database connection configuration.
 package db
 
 import (
@@ -9,6 +10,11 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// Connect establishes a connection to the database using the provided DBConf.
+// Parameters:
+//   - cfg: configuration containing the database URL and pool settings.
+//
+// Returns a ready-to-use sql.DB connection or an error if connection or ping fails.
 func Connect(cfg *DBConf) (*sql.DB, error) {
 	db, err := sql.Open("pgx", cfg.URL)
 	if err != nil {
