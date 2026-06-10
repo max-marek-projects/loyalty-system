@@ -42,7 +42,7 @@ func LoadConfig() *Config {
 	flag.StringVar(&config.CookieSecret, "s", "", "cookie signing secret")
 	flag.IntVar(&config.MaxParallelWorkers, "p", 5, "maximum amount of parallel workers")
 	flag.StringVar(&config.AccrualSystemAddress, "r", "", "maximum concurrent parallel operations")
-	flag.IntVar(&config.PollInterval, "i", 30, "external service poll interval")
+	flag.IntVar(&config.PollInterval, "i", 5, "external service poll interval")
 	flag.BoolVar(&config.MockExternalService, "m", false, "mock external storage")
 	// read flags to temp vars
 	var readSec, writeSec int
