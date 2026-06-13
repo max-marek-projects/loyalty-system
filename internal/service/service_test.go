@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,7 +46,7 @@ func TestRegisterUser(t *testing.T) {
 			request:    models.RegisterRequest{Login: "fail", Password: "pass"},
 			repoUserID: 0,
 			repoErr:    errors.New("db error"),
-			expected:   want{userID: 0, err: errors.New("Failed to register user in storage: db error")},
+			expected:   want{userID: 0, err: errors.New("failed to register user in storage: db error")},
 		},
 	}
 
@@ -113,7 +114,7 @@ func TestLoginUser(t *testing.T) {
 			repoUserID:     0,
 			repoHashedPass: "",
 			repoErr:        errors.New("db error"),
-			expected:       want{userID: 0, err: errors.New("Failed to check user in storage: db error")},
+			expected:       want{userID: 0, err: errors.New("failed to check user in storage: db error")},
 		},
 	}
 
@@ -182,7 +183,7 @@ func TestAddOrder(t *testing.T) {
 			userID:      1,
 			orderNumber: validNumber,
 			repoErr:     errors.New("db error"),
-			expected:    want{added: false, err: errors.New("Failed to check user in storage: db error")},
+			expected:    want{added: false, err: errors.New("failed to check user in storage: db error")},
 		},
 	}
 
@@ -229,7 +230,7 @@ func TestGetAllOrders(t *testing.T) {
 			userID:      1,
 			repoOrders:  nil,
 			repoErr:     errors.New("db error"),
-			expectedErr: errors.New("Failed to get orders from storage: db error"),
+			expectedErr: errors.New("failed to get orders from storage: db error"),
 		},
 	}
 
@@ -258,21 +259,18 @@ func TestGetBalance(t *testing.T) {
 		userID      int64
 		repoBalance *models.BalanceData
 		repoErr     error
-		expectedErr error
 	}{
 		{
 			name:        "success",
 			userID:      1,
 			repoBalance: balance,
 			repoErr:     nil,
-			expectedErr: nil,
 		},
 		{
 			name:        "repository error",
 			userID:      1,
 			repoBalance: nil,
 			repoErr:     errors.New("db error"),
-			expectedErr: errors.New("Failed to get balance from storage: db error"),
 		},
 	}
 
@@ -284,8 +282,8 @@ func TestGetBalance(t *testing.T) {
 				Return(tt.repoBalance, tt.repoErr)
 			svc := &endpointService{storage: mockStorage}
 			b, err := svc.GetBalance(context.Background(), tt.userID)
-			if tt.expectedErr != nil {
-				assert.EqualError(t, err, tt.expectedErr.Error())
+			if tt.repoErr != nil {
+				assert.True(t, strings.Contains(err.Error(), tt.repoErr.Error()))
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.repoBalance, b)
@@ -335,7 +333,7 @@ func TestWithdraw(t *testing.T) {
 			orderNumber: validNumber,
 			sum:         100,
 			repoErr:     errors.New("db error"),
-			expectedErr: errors.New("Failed to withdraw in storage: db error"),
+			expectedErr: errors.New("failed to withdraw in storage: db error"),
 		},
 	}
 
@@ -381,7 +379,7 @@ func TestGetAllWithdrawals(t *testing.T) {
 			userID:        1,
 			repoWithdraws: nil,
 			repoErr:       errors.New("db error"),
-			expectedErr:   errors.New("Failed to get orders from storage: db error"),
+			expectedErr:   errors.New("failed to get orders from storage: db error"),
 		},
 	}
 

@@ -54,7 +54,7 @@ func TestDBStorage_RegisterUser(t *testing.T) {
 					WithArgs("error", "hash").
 					WillReturnError(errors.New("pq: deadlock"))
 			},
-			expected: want{userID: 0, err: errors.New("Failed to add user to storage: pq: deadlock")},
+			expected: want{userID: 0, err: errors.New("failed to add user to storage: pq: deadlock")},
 		},
 	}
 
@@ -144,7 +144,7 @@ func TestDBStorage_AddOrder(t *testing.T) {
 					WithArgs(orderNumber, userID, models.StatusNEW).
 					WillReturnError(errors.New("disk full"))
 			},
-			wantErr: errors.New("Failed to add order to storage: disk full"),
+			wantErr: errors.New("failed to add order to storage: disk full"),
 		},
 	}
 
@@ -211,7 +211,7 @@ func TestDBStorage_GetAllOrders(t *testing.T) {
 					WillReturnError(errors.New("connection lost"))
 			},
 			wantLen: 0,
-			wantErr: errors.New("Failed to get all orders from database: connection lost"),
+			wantErr: errors.New("failed to get all orders from database: connection lost"),
 		},
 	}
 
@@ -277,7 +277,7 @@ func TestDBStorage_CheckUser(t *testing.T) {
 					WithArgs("error").
 					WillReturnError(errors.New("pq: deadlock"))
 			},
-			expected: want{userID: 0, pass: "", err: errors.New("Failed to get user from storage by id: pq: deadlock")},
+			expected: want{userID: 0, pass: "", err: errors.New("failed to get user from storage by id: pq: deadlock")},
 		},
 	}
 
@@ -332,7 +332,7 @@ func TestDBStorage_GetBalance(t *testing.T) {
 					WillReturnError(sql.ErrNoRows)
 			},
 			want:    nil,
-			wantErr: errors.New("Failed to get all orders from database: sql: no rows in result set"),
+			wantErr: errors.New("failed to get all orders from database: sql: no rows in result set"),
 		},
 		{
 			name:   "database error",
@@ -343,7 +343,7 @@ func TestDBStorage_GetBalance(t *testing.T) {
 					WillReturnError(errors.New("connection lost"))
 			},
 			want:    nil,
-			wantErr: errors.New("Failed to get all orders from database: connection lost"),
+			wantErr: errors.New("failed to get all orders from database: connection lost"),
 		},
 	}
 
@@ -412,7 +412,7 @@ func TestDBStorage_GetAllWithdrawals(t *testing.T) {
 					WillReturnError(errors.New("disk full"))
 			},
 			wantLen: 0,
-			wantErr: errors.New("Failed to get all orders from database: disk full"),
+			wantErr: errors.New("failed to get all orders from database: disk full"),
 		},
 	}
 
@@ -459,7 +459,7 @@ func TestDBStorage_MarkAllProcessingAsNew(t *testing.T) {
 					WithArgs(models.StatusNEW, models.StatusPROCESSING).
 					WillReturnError(errors.New("update failed"))
 			},
-			wantErr: errors.New("Failed to reset all statuses: update failed"),
+			wantErr: errors.New("failed to reset all statuses: update failed"),
 		},
 	}
 
@@ -523,7 +523,7 @@ func TestDBStorage_FindAndClaimNewOrders(t *testing.T) {
 					WillReturnError(errors.New("query error"))
 			},
 			wantLen: 0,
-			wantErr: errors.New("Failed to get all orders from database: query error"),
+			wantErr: errors.New("failed to get all orders from database: query error"),
 		},
 	}
 
@@ -576,7 +576,7 @@ func TestDBStorage_UpdateOrderStatus(t *testing.T) {
 					WithArgs(models.StatusINVALID, 20).
 					WillReturnError(errors.New("update failed"))
 			},
-			wantErr: errors.New("Failed to update status: update failed"),
+			wantErr: errors.New("failed to update status: update failed"),
 		},
 	}
 

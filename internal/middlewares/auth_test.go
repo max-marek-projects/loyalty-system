@@ -57,7 +57,9 @@ func TestAuthMiddlewareValid(t *testing.T) {
 	cookieRec := httptest.NewRecorder()
 	err := auth.SetUserCookie(cookieRec, 123, secretKey)
 	require.NoError(t, err)
-	cookie := cookieRec.Result().Cookies()[0]
+	response := cookieRec.Result()
+	defer response.Body.Close()
+	cookie := response.Cookies()[0]
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.AddCookie(cookie)

@@ -31,7 +31,7 @@ func NewDBStorage(dbURL string) (*dbStorage, error) {
 	config := db.NewDBConf(dbURL)
 	storage, err := db.Connect(config)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create DB storage: %w", err)
+		return nil, fmt.Errorf("failed to create DB storage: %w", err)
 	}
 	dbs := &dbStorage{
 		storage: storage,
@@ -39,7 +39,7 @@ func NewDBStorage(dbURL string) (*dbStorage, error) {
 	}
 	err = dbs.runMigrations()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create DB storage: %w", err)
+		return nil, fmt.Errorf("failed to create DB storage: %w", err)
 	}
 	return dbs, nil
 }
@@ -52,11 +52,11 @@ func (dbs *dbStorage) runMigrations() error {
 		dbs.config.URL,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to run migrations: %w", err)
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	defer m.Close()
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("Failed to run migrations: %w", err)
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	return nil
 }
@@ -79,7 +79,7 @@ func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrAlreadyInStorage
 		}
-		return 0, fmt.Errorf("Failed to add user to storage: %w", err)
+		return 0, fmt.Errorf("failed to add user to storage: %w", err)
 	}
 	return userID, nil
 }
@@ -98,7 +98,7 @@ func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, st
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, "", ErrUserNotFound
 		}
-		return 0, "", fmt.Errorf("Failed to get user from storage by id: %w", err)
+		return 0, "", fmt.Errorf("failed to get user from storage by id: %w", err)
 	}
 	return userID, hashedPassword, nil
 }
@@ -119,7 +119,7 @@ func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber st
 		return nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("Failed to add order to storage: %w", err)
+		return fmt.Errorf("failed to add order to storage: %w", err)
 	}
 	var recordUserID int64
 	query = `--sql
@@ -128,7 +128,7 @@ func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber st
 	`
 	err = dbs.storage.QueryRowContext(ctx, query, orderNumber).Scan(&recordUserID)
 	if err != nil {
-		return fmt.Errorf("Failed to select order data from storage: %w", err)
+		return fmt.Errorf("failed to select order data from storage: %w", err)
 	}
 	if recordUserID != userID {
 		return ErrStorageConflict
@@ -141,10 +141,10 @@ func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.
 	query := `SELECT id, number, status, accrual, uploaded_at FROM orders WHERE user_id = $1 ORDER BY uploaded_at DESC`
 	rows, err := dbs.storage.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	defer rows.Close()
 	var res []models.OrderData
@@ -164,7 +164,7 @@ func (dbs *dbStorage) GetBalance(ctx context.Context, userID int64) (*models.Bal
 	query := `SELECT balance, withdrawn FROM users WHERE id = $1`
 	err := dbs.storage.QueryRowContext(ctx, query, userID).Scan(&balanceData.Current, &balanceData.Withdrawn)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	return balanceData, nil
 }
@@ -221,10 +221,10 @@ func (dbs *dbStorage) GetAllWithdrawals(ctx context.Context, userID int64) ([]mo
 	query := `SELECT order_number, sum, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC`
 	rows, err := dbs.storage.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	defer rows.Close()
 	var res []models.WithdrawData
@@ -246,11 +246,11 @@ func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error {
 	`
 	result, err := dbs.storage.ExecContext(ctx, query, models.StatusNEW, models.StatusPROCESSING)
 	if err != nil {
-		return fmt.Errorf("Failed to reset all statuses: %v", err)
+		return fmt.Errorf("failed to reset all statuses: %v", err)
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("Could not get affected rows: %v", err)
+		return fmt.Errorf("could not get affected rows: %v", err)
 	}
 	logger.Log.Info("Successfully reset statuses.", slog.Int64("rowsAffected", rowsAffected))
 	return nil
@@ -265,10 +265,10 @@ func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.Order
 	`
 	rows, err := dbs.storage.QueryContext(ctx, query, models.StatusPROCESSING, models.StatusNEW)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("Failed to get all orders from database: %v", err)
+		return nil, fmt.Errorf("failed to get all orders from database: %v", err)
 	}
 	defer rows.Close()
 	var res []models.OrderData
@@ -290,11 +290,11 @@ func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, stat
 	`
 	result, err := dbs.storage.ExecContext(ctx, query, status, orderID)
 	if err != nil {
-		return fmt.Errorf("Failed to update status: %v", err)
+		return fmt.Errorf("failed to update status: %v", err)
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("Could not get affected rows: %v", err)
+		return fmt.Errorf("could not get affected rows: %v", err)
 	}
 	logger.Log.Info("Successfully reset statuses.", slog.Int64("rowsAffected", rowsAffected))
 	return nil
