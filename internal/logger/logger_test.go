@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
 
 func TestInitialize(t *testing.T) {
@@ -14,6 +13,4 @@ func TestInitialize(t *testing.T) {
 
 	err = Initialize("invalid-level")
 	assert.Error(t, err)
-
-	Log = zap.NewNop()
 }

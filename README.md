@@ -14,7 +14,7 @@ The system integrates with an external accrual calculator (simulated or real) th
 - **Balance management** – current points and total withdrawn.
 - **Points withdrawal** – use points to pay for orders (subject to sufficient balance).
 - **Background order processor** – polls the accrual system (or mock) to update order status and balances.
-- **Structured logging** – `zap` with configurable log level.
+- **Structured logging** – `slog` with configurable log level.
 - **PostgreSQL** persistence with migrations.
 - **Graceful shutdown** and concurrency control (worker pool).
 
@@ -30,7 +30,7 @@ The system integrates with an external accrual calculator (simulated or real) th
 | Migrations     | `golang-migrate`                |
 | JWT handling   | `golang-jwt/jwt`                |
 | Password hashing | `bcrypt`                       |
-| Logging        | `uber-go/zap`                   |
+| Logging        | `slog`                   |
 | Configuration  | `caarlos0/env` + `flag` + `.env` file |
 | Testing        | `testify` + `mockery`|
 

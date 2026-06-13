@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,7 +16,6 @@ import (
 	"github.com/max-marek-projects/loyalty-system/internal/repository"
 	"github.com/max-marek-projects/loyalty-system/internal/server"
 	"github.com/max-marek-projects/loyalty-system/internal/service"
-	"go.uber.org/zap"
 )
 
 // entry point
@@ -24,17 +23,23 @@ func main() {
 	configData := config.LoadConfig()
 	err := logger.Initialize(configData.LoggerLevel)
 	if err != nil {
-		log.Fatalf("Unable to initialize logger: %v", err)
+		logger.Log.Error("Unable to initialize logger", slog.Any("error", err))
+		os.Exit(1)
 	}
 	store, err := repository.NewDBStorage(configData.DatabaseURI)
 	if err != nil {
-		logger.Log.Fatal("Unable to create storage", zap.Error(err))
+		logger.Log.Error("Unable to create storage", slog.Any("error", err))
+		os.Exit(1)
 	}
 	service, err := service.NewEndpointService(store, configData.AccrualSystemAddress)
 	if err != nil {
-		logger.Log.Fatal("Unable to create service", zap.Error(err))
+		logger.Log.Error("Unable to create service", slog.Any("error", err))
+		os.Exit(1)
 	}
-	go service.StartOrderProcessor(context.Background(), configData.MaxParallelWorkers, configData.PollInterval, configData.MockExternalService)
+	// create context with cancel for orders processing
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go service.StartOrderProcessor(ctx, configData.MaxParallelWorkers, configData.PollInterval, configData.MockExternalService)
 	handler := handlers.NewHandler(service, configData.MaxParallelWorkers, configData.CookieSecret)
 	srv := server.NewServer(configData.RunAddr, handler, configData.ReadTimeout, configData.WriteTimeout, configData.CookieSecret)
 
@@ -51,21 +56,24 @@ func main() {
 	select {
 	case sig := <-stop:
 		logger.Log.Info("Shutdown signal received",
-			zap.String("signal", sig.String()),
+			slog.String("signal", sig.String()),
 		)
+		cancel()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := srv.Shutdown(ctx); err != nil {
-			logger.Log.Error("Graceful shutdown failed", zap.Error(err))
+		ctxShutdown, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelShutdown()
+		if err := srv.Shutdown(ctxShutdown); err != nil {
+			logger.Log.Error("Graceful shutdown failed", slog.Any("error", err))
 		} else {
 			logger.Log.Info("Server stopped gracefully")
 		}
+		// additional time for workers to shut down
+		time.Sleep(2 * time.Second)
 
 	case err := <-serverErr:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Log.Fatal("Server stopped with error", zap.Error(err))
+			logger.Log.Error("Server stopped with error", slog.Any("error", err))
+			os.Exit(1)
 		}
 	}
 }

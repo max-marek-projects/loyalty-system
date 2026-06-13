@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"fmt"
+	"time"
 )
 
 // ErrorLoginAlreadyTaken is returned when registration login already exists.
@@ -20,4 +22,15 @@ var ErrorNumberNotValid = errors.New("order number not valid by Luhn algorithm")
 var ErrInsufficientFunds = errors.New("user has insufficient funds")
 
 // ErrorOrderNotYetProcessed is returned when the accrual system indicates the order is not ready.
-var ErrorOrderNotYetProcessed = errors.New("order not yet processed")
+type ErrorOrderNotYetProcessed struct {
+	Err        error
+	RetryAfter time.Duration
+}
+
+func (e *ErrorOrderNotYetProcessed) Error() string {
+	return fmt.Sprintf("Order not yet processed: %v. Retry after: %v", e.Err, e.RetryAfter)
+}
+
+func (e *ErrorOrderNotYetProcessed) Unwrap() error {
+	return e.Err
+}

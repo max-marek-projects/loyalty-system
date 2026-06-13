@@ -14,7 +14,7 @@ func TestLoadConfig(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
-	os.Args = []string{"cmd", "-a=:8081", "-l=DEBUG", "-d=postgres://test", "-s=secret", "-p=10", "-r=http://accrual", "-i=5", "-m=true", "-t=10", "-w=10"}
+	os.Args = []string{"cmd", "-a=:8081", "-l=DEBUG", "-d=postgres://test", "-s=secret", "-p=10", "-r=http://accrual", "-i=5", "-m=true", "-t=10s", "-w=10s"}
 	cfg := LoadConfig()
 	assert.NotNil(t, cfg)
 	assert.Equal(t, ":8081", cfg.RunAddr)

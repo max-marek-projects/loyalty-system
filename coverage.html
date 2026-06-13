@@ -59,7 +59,7 @@
 				
 				<option value="file1">github.com/max-marek-projects/loyalty-system/internal/auth/jwt.go (90.0%)</option>
 				
-				<option value="file2">github.com/max-marek-projects/loyalty-system/internal/config/config.go (91.3%)</option>
+				<option value="file2">github.com/max-marek-projects/loyalty-system/internal/config/config.go (90.0%)</option>
 				
 				<option value="file3">github.com/max-marek-projects/loyalty-system/internal/config/db/config.go (100.0%)</option>
 				
@@ -69,7 +69,7 @@
 				
 				<option value="file6">github.com/max-marek-projects/loyalty-system/internal/handlers/handlers.go (100.0%)</option>
 				
-				<option value="file7">github.com/max-marek-projects/loyalty-system/internal/logger/logger.go (90.0%)</option>
+				<option value="file7">github.com/max-marek-projects/loyalty-system/internal/logger/logger.go (80.0%)</option>
 				
 				<option value="file8">github.com/max-marek-projects/loyalty-system/internal/middlewares/auth.go (88.9%)</option>
 				
@@ -81,11 +81,13 @@
 				
 				<option value="file12">github.com/max-marek-projects/loyalty-system/internal/server/server.go (100.0%)</option>
 				
-				<option value="file13">github.com/max-marek-projects/loyalty-system/internal/service/service.go (44.4%)</option>
+				<option value="file13">github.com/max-marek-projects/loyalty-system/internal/service/errors.go (100.0%)</option>
 				
-				<option value="file14">github.com/max-marek-projects/loyalty-system/internal/utils/algorithms.go (100.0%)</option>
+				<option value="file14">github.com/max-marek-projects/loyalty-system/internal/service/service.go (45.3%)</option>
 				
-				<option value="file15">github.com/max-marek-projects/loyalty-system/internal/utils/headers.go (100.0%)</option>
+				<option value="file15">github.com/max-marek-projects/loyalty-system/internal/utils/algorithms.go (100.0%)</option>
+				
+				<option value="file16">github.com/max-marek-projects/loyalty-system/internal/utils/headers.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -104,7 +106,7 @@
 import (
         "context"
         "errors"
-        "log"
+        "log/slog"
         "net/http"
         "os"
         "os/signal"
@@ -117,7 +119,6 @@ import (
         "github.com/max-marek-projects/loyalty-system/internal/repository"
         "github.com/max-marek-projects/loyalty-system/internal/server"
         "github.com/max-marek-projects/loyalty-system/internal/service"
-        "go.uber.org/zap"
 )
 
 // entry point
@@ -125,17 +126,23 @@ func main() <span class="cov0" title="0">{
         configData := config.LoadConfig()
         err := logger.Initialize(configData.LoggerLevel)
         if err != nil </span><span class="cov0" title="0">{
-                log.Fatalf("Unable to initialize logger: %v", err)
+                logger.Log.Error("Unable to initialize logger", slog.Any("error", err))
+                os.Exit(1)
         }</span>
         <span class="cov0" title="0">store, err := repository.NewDBStorage(configData.DatabaseURI)
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Fatal("Unable to create storage", zap.Error(err))
+                logger.Log.Error("Unable to create storage", slog.Any("error", err))
+                os.Exit(1)
         }</span>
         <span class="cov0" title="0">service, err := service.NewEndpointService(store, configData.AccrualSystemAddress)
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Fatal("Unable to create service", zap.Error(err))
+                logger.Log.Error("Unable to create service", slog.Any("error", err))
+                os.Exit(1)
         }</span>
-        <span class="cov0" title="0">go service.StartOrderProcessor(context.Background(), configData.MaxParallelWorkers, configData.PollInterval, configData.MockExternalService)
+        // create context with cancel for orders processing
+        <span class="cov0" title="0">ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+        go service.StartOrderProcessor(ctx, configData.MaxParallelWorkers, configData.PollInterval, configData.MockExternalService)
         handler := handlers.NewHandler(service, configData.MaxParallelWorkers, configData.CookieSecret)
         srv := server.NewServer(configData.RunAddr, handler, configData.ReadTimeout, configData.WriteTimeout, configData.CookieSecret)
 
@@ -152,49 +159,60 @@ func main() <span class="cov0" title="0">{
         select </span>{
         case sig := &lt;-stop:<span class="cov0" title="0">
                 logger.Log.Info("Shutdown signal received",
-                        zap.String("signal", sig.String()),
+                        slog.String("signal", sig.String()),
                 )
+                cancel()
 
-                ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-                defer cancel()
-
-                if err := srv.Shutdown(ctx); err != nil </span><span class="cov0" title="0">{
-                        logger.Log.Error("Graceful shutdown failed", zap.Error(err))
+                ctxShutdown, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+                defer cancelShutdown()
+                if err := srv.Shutdown(ctxShutdown); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error("Graceful shutdown failed", slog.Any("error", err))
                 }</span> else<span class="cov0" title="0"> {
                         logger.Log.Info("Server stopped gracefully")
                 }</span>
+                // additional time for workers to shut down
+                <span class="cov0" title="0">time.Sleep(2 * time.Second)</span>
 
         case err := &lt;-serverErr:<span class="cov0" title="0">
                 if err != nil &amp;&amp; !errors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
-                        logger.Log.Fatal("Server stopped with error", zap.Error(err))
+                        logger.Log.Error("Server stopped with error", slog.Any("error", err))
+                        os.Exit(1)
                 }</span>
         }
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package auth
+		<pre class="file" id="file1" style="display: none">// Package auth provides JWT-based authentication using HTTP cookies.
+package auth
 
 import (
         "errors"
         "fmt"
+        "log/slog"
         "net/http"
         "time"
 
         "github.com/golang-jwt/jwt/v4"
         "github.com/max-marek-projects/loyalty-system/internal/logger"
-        "go.uber.org/zap"
 )
 
 const cookieName = "token"
 
+// Claims represents the JWT claims containing a user ID.
 type Claims struct {
         jwt.RegisteredClaims
-        UserID int64
+        UserID int64 // Unique user identifier.
 }
 
-// create jwt and set it to cookie
+// SetUserCookie creates a signed JWT for the given user ID and sets it as an HTTP cookie.
+// Parameters:
+//   - w: ResponseWriter to write the cookie.
+//   - userID: ID to embed in the token.
+//   - secretKey: key used for signing.
+//
+// Returns an error if token signing fails.
 func SetUserCookie(w http.ResponseWriter, userID int64, secretKey string) error <span class="cov8" title="1">{
-        logger.Log.Info("Signing token with key", zap.String("key", secretKey))
+        logger.Log.Info("Signing token with key", slog.String("key", secretKey))
         claims := Claims{
                 RegisteredClaims: jwt.RegisteredClaims{
                         ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
@@ -217,6 +235,12 @@ func SetUserCookie(w http.ResponseWriter, userID int64, secretKey string) error 
         return nil</span>
 }
 
+// extractUserIDFromToken parses a JWT string, validates its signature, and returns the user ID.
+// Parameters:
+//   - token: raw JWT string.
+//   - secretKey: key for signature verification.
+//
+// Returns the user ID on success or an error if parsing or validation fails.
 func extractUserIDFromToken(token string, secretKey string) (int64, error) <span class="cov8" title="1">{
         claims := &amp;Claims{}
         tokenData, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) </span><span class="cov8" title="1">{
@@ -231,7 +255,12 @@ func extractUserIDFromToken(token string, secretKey string) (int64, error) <span
         <span class="cov8" title="1">return claims.UserID, nil</span>
 }
 
-// get user id from request cookie
+// GetUserIDFromRequest extracts the JWT from the request cookie and returns the user ID.
+// Parameters:
+//   - r: HTTP request containing the cookie.
+//   - secretKey: key to verify the token.
+//
+// Returns the user ID or an error if the cookie is missing, token is invalid, or signature fails.
 func GetUserIDFromRequest(r *http.Request, secretKey string) (int64, error) <span class="cov8" title="1">{
         cookie, err := r.Cookie(cookieName)
         if err != nil </span><span class="cov8" title="1">{
@@ -241,7 +270,8 @@ func GetUserIDFromRequest(r *http.Request, secretKey string) (int64, error) <spa
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package config
+		<pre class="file" id="file2" style="display: none">// Package config provides configuration loading from environment variables, .env file, and command-line flags.
+package config
 
 import (
         "flag"
@@ -253,6 +283,7 @@ import (
         "github.com/joho/godotenv"
 )
 
+// Config holds all application configuration parameters.
 type Config struct {
         RunAddr              string        `env:"RUN_ADDRESS"`            // address and port to run server
         ReadTimeout          time.Duration `env:"READ_TIMEOUT"`           // server read timeout in seconds
@@ -266,10 +297,22 @@ type Config struct {
         AccrualSystemAddress string        `env:"ACCRUAL_SYSTEM_ADDRESS"` // loyalty calculation system address
 }
 
-// parse all flags from command line
+// LoadConfig parses configuration from .env, environment variables, and command-line flags.
+// Returns a pointer to the populated Config struct.
 func LoadConfig() *Config <span class="cov8" title="1">{
-        var config Config
-
+        config := &amp;Config{
+                RunAddr:              ":8080",
+                LoggerLevel:          "INFO",
+                DatabaseURI:          "",
+                CookieSecret:         "",
+                MaxParallelWorkers:   5,
+                AccrualSystemAddress: "",
+                PollInterval:         5,
+                MockExternalService:  false,
+                ReadTimeout:          time.Duration(30) * time.Second,
+                WriteTimeout:         time.Duration(30) * time.Second,
+        }
+        // load env vars
         err := godotenv.Load()
         if err != nil </span><span class="cov8" title="1">{
                 if os.IsNotExist(err) </span><span class="cov8" title="1">{
@@ -278,35 +321,32 @@ func LoadConfig() *Config <span class="cov8" title="1">{
                         log.Fatalf("Failed to load .env file: %v", err)
                 }</span>
         }
-        // read flags directly to config
-        <span class="cov8" title="1">flag.StringVar(&amp;config.RunAddr, "a", ":8080", "address and port to run server")
-        flag.StringVar(&amp;config.LoggerLevel, "l", "INFO", "logger level")
-        flag.StringVar(&amp;config.DatabaseURI, "d", "", "database connection url")
-        flag.StringVar(&amp;config.CookieSecret, "s", "", "cookie signing secret")
-        flag.IntVar(&amp;config.MaxParallelWorkers, "p", 5, "maximum amount of parallel workers")
-        flag.StringVar(&amp;config.AccrualSystemAddress, "r", "", "maximum concurrent parallel operations")
-        flag.IntVar(&amp;config.PollInterval, "i", 5, "external service poll interval")
-        flag.BoolVar(&amp;config.MockExternalService, "m", false, "mock external storage")
-        // read flags to temp vars
-        var readSec, writeSec int
-        flag.IntVar(&amp;readSec, "t", 30, "server read timeout in seconds")
-        flag.IntVar(&amp;writeSec, "w", 30, "server write timeout in seconds")
-        // parse flags
-        flag.Parse()
-        // parse temp vars to config struct
-        config.ReadTimeout = time.Duration(readSec) * time.Second
-        config.WriteTimeout = time.Duration(writeSec) * time.Second
-        if err := env.Parse(&amp;config); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := env.Parse(config); err != nil </span><span class="cov0" title="0">{
                 log.Printf("warning: failed to parse env: %v", err)
         }</span>
-        <span class="cov8" title="1">return &amp;config</span>
+        // read flags directly to config
+        <span class="cov8" title="1">flag.StringVar(&amp;config.RunAddr, "a", config.RunAddr, "address and port to run server")
+        flag.StringVar(&amp;config.LoggerLevel, "l", config.LoggerLevel, "logger level")
+        flag.StringVar(&amp;config.DatabaseURI, "d", config.DatabaseURI, "database connection url")
+        flag.StringVar(&amp;config.CookieSecret, "s", config.CookieSecret, "cookie signing secret")
+        flag.IntVar(&amp;config.MaxParallelWorkers, "p", config.MaxParallelWorkers, "maximum amount of parallel workers")
+        flag.StringVar(&amp;config.AccrualSystemAddress, "r", config.AccrualSystemAddress, "accrual system base address")
+        flag.IntVar(&amp;config.PollInterval, "i", config.PollInterval, "external service poll interval")
+        flag.BoolVar(&amp;config.MockExternalService, "m", config.MockExternalService, "mock external storage")
+        flag.DurationVar(&amp;config.ReadTimeout, "t", config.ReadTimeout, "server read timeout in seconds")
+        flag.DurationVar(&amp;config.WriteTimeout, "w", config.WriteTimeout, "server write timeout in seconds")
+        // parse flags
+        flag.Parse()
+        return config</span>
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package db
+		<pre class="file" id="file3" style="display: none">// Package db provides database configuration.
+package db
 
 import "time"
 
+// DBConf holds database connection configuration (URL, pool limits, migrations path).
 type DBConf struct {
         URL             string        // database connection url
         MaxOpenConns    int           // max amount of opened database connections
@@ -315,6 +355,10 @@ type DBConf struct {
         MigrationsPath  string        // path to folder with migrations files
 }
 
+// NewDBConf creates a DBConf with default connection pool settings and the given database URL.
+// Parameters:
+//   - dbURL: database connection string.
+// Returns a pointer to the initialized DBConf.
 func NewDBConf(dbURL string) *DBConf <span class="cov8" title="1">{
         return &amp;DBConf{
                 URL:             dbURL,
@@ -326,7 +370,8 @@ func NewDBConf(dbURL string) *DBConf <span class="cov8" title="1">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package db
+		<pre class="file" id="file4" style="display: none">// Package db provides database connection configuration.
+package db
 
 import (
         "context"
@@ -337,6 +382,11 @@ import (
         _ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// Connect establishes a connection to the database using the provided DBConf.
+// Parameters:
+//   - cfg: configuration containing the database URL and pool settings.
+//
+// Returns a ready-to-use sql.DB connection or an error if connection or ping fails.
 func Connect(cfg *DBConf) (*sql.DB, error) <span class="cov0" title="0">{
         db, err := sql.Open("pgx", cfg.URL)
         if err != nil </span><span class="cov0" title="0">{
@@ -356,27 +406,29 @@ func Connect(cfg *DBConf) (*sql.DB, error) <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">package handlers
+		<pre class="file" id="file5" style="display: none">// Package handlers provides HTTP handlers for the loyalty system API.
+package handlers
 
 import (
         "encoding/json"
         "errors"
         "io"
+        "log/slog"
         "net/http"
 
         "github.com/max-marek-projects/loyalty-system/internal/auth"
         "github.com/max-marek-projects/loyalty-system/internal/logger"
         "github.com/max-marek-projects/loyalty-system/internal/models"
         "github.com/max-marek-projects/loyalty-system/internal/service"
-        "go.uber.org/zap"
 )
 
-// register user in service
+// RegisterUser handles user registration.
+// Reads login/password from JSON, creates a user, and sets an auth cookie.
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
 
         var requestData models.RegisterRequest
         if err := json.NewDecoder(r.Body).Decode(&amp;requestData); err != nil </span><span class="cov8" title="1">{
-                logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+                logger.Log.Debug("cannot decode request JSON body", slog.Any("error", err))
                 http.Error(w, "Invalid JSON", http.StatusBadRequest)
                 return
         }</span>
@@ -390,23 +442,24 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) <span cla
                         http.Error(w, "Login already taken", http.StatusConflict)
                         return
                 }</span>
-                <span class="cov8" title="1">logger.Log.Error("Failed to register user", zap.Error(err))
+                <span class="cov8" title="1">logger.Log.Error("Failed to register user", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return</span>
         }
         <span class="cov8" title="1">if err := auth.SetUserCookie(w, userID, h.secretKey); err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("Failed to set auth cookie", zap.Error(err))
+                logger.Log.Error("Failed to set auth cookie", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
         <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
 }
 
-// login user in service
+// LoginUser handles user login.
+// Validates credentials and sets an auth cookie on success.
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         var requestData models.RegisterRequest
         if err := json.NewDecoder(r.Body).Decode(&amp;requestData); err != nil </span><span class="cov8" title="1">{
-                logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+                logger.Log.Debug("cannot decode request JSON body", slog.Any("error", err))
                 http.Error(w, "Invalid JSON", http.StatusBadRequest)
                 return
         }</span>
@@ -420,19 +473,20 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) <span class=
                         http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
                         return
                 }</span>
-                <span class="cov8" title="1">logger.Log.Error("Failed to register user", zap.Error(err))
+                <span class="cov8" title="1">logger.Log.Error("Failed to register user", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return</span>
         }
         <span class="cov8" title="1">if err := auth.SetUserCookie(w, userID, h.secretKey); err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("Failed to set auth cookie", zap.Error(err))
+                logger.Log.Error("Failed to set auth cookie", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
         <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
 }
 
-// add new order number
+// NewOrder adds a new order number for the authenticated user.
+// Reads the order number from request body and validates it.
 func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         body, err := io.ReadAll(r.Body)
         if err != nil || len(body) == 0 </span><span class="cov8" title="1">{
@@ -445,7 +499,7 @@ func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="
         }</span>
         <span class="cov8" title="1">userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Log.Error("Failed to get user id from context", zap.Error(err))
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
@@ -459,7 +513,7 @@ func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="
                         http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
                         return
                 }</span>
-                <span class="cov0" title="0">logger.Log.Error("Failed add order to storage", zap.Error(err))
+                <span class="cov0" title="0">logger.Log.Error("Failed add order to storage", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return</span>
         }
@@ -470,17 +524,18 @@ func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="
         <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
 }
 
-// get all orders for current user
+// GetUserOrders returns all orders belonging to the authenticated user.
+// Responds with JSON array or 204 No Content if none exist.
 func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Log.Error("Failed to get user id from context", zap.Error(err))
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
         <span class="cov8" title="1">orders, err := h.service.GetAllOrders(r.Context(), userID)
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("failed to get user URLs", zap.Error(err))
+                logger.Log.Error("failed to get user URLs", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
@@ -491,7 +546,7 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) <span cl
         }</span>
         <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(orders, "", "  ")
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("failed to encode response", zap.Error(err))
+                logger.Log.Error("failed to encode response", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
@@ -499,29 +554,30 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) <span cl
         w.WriteHeader(http.StatusOK)
         _, err = w.Write(prettyJSON)
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("failed to write response", zap.Error(err))
+                logger.Log.Error("failed to write response", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
 }
 
-// get current user balance
+// GetBalance returns the current user's loyalty balance.
+// Responds with JSON containing current balance and withdrawn amount.
 func (h *Handler) GetBalance(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Log.Error("Failed to get user id from context", zap.Error(err))
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
         <span class="cov8" title="1">balance, err := h.service.GetBalance(r.Context(), userID)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Log.Error("failed to get user balance", zap.Error(err))
+                logger.Log.Error("failed to get user balance", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
         <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(balance, "", "  ")
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("failed to encode response", zap.Error(err))
+                logger.Log.Error("failed to encode response", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
@@ -529,17 +585,18 @@ func (h *Handler) GetBalance(w http.ResponseWriter, r *http.Request) <span class
         w.WriteHeader(http.StatusOK)
         _, err = w.Write(prettyJSON)
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("failed to write response", zap.Error(err))
+                logger.Log.Error("failed to write response", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
 }
 
-// withdraw
+// Withdraw handles a withdrawal request from the user's balance.
+// Validates order number and sum, then processes the withdrawal.
 func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         var withdrawData models.WithdrawRequest
         if err := json.NewDecoder(r.Body).Decode(&amp;withdrawData); err != nil </span><span class="cov0" title="0">{
-                logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+                logger.Log.Debug("cannot decode request JSON body", slog.Any("error", err))
                 http.Error(w, "Invalid JSON", http.StatusBadRequest)
                 return
         }</span>
@@ -553,7 +610,7 @@ func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) <span class="
         }</span>
         <span class="cov8" title="1">userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Log.Error("Failed to get user id from context", zap.Error(err))
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
@@ -567,24 +624,25 @@ func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) <span class="
                         http.Error(w, "User has insufficient funds", http.StatusPaymentRequired)
                         return
                 }</span>
-                <span class="cov0" title="0">logger.Log.Error("failed to get user balance", zap.Error(err))
+                <span class="cov0" title="0">logger.Log.Error("failed to get user balance", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return</span>
         }
         <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
 }
 
-// get all user withdrawals
+// GetUserWithdrawals returns all withdrawal transactions for the authenticated user.
+// Responds with JSON array or 204 No Content if none exist.
 func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Log.Error("Failed to get user id from context", zap.Error(err))
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
         <span class="cov8" title="1">withdrawals, err := h.service.GetAllWithdrawals(r.Context(), userID)
         if err != nil </span><span class="cov8" title="1">{
-                logger.Log.Error("failed to get user URLs", zap.Error(err))
+                logger.Log.Error("failed to get user URLs", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
@@ -595,7 +653,7 @@ func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) <sp
         }</span>
         <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(withdrawals, "", "  ")
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("failed to encode response", zap.Error(err))
+                logger.Log.Error("failed to encode response", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
@@ -603,7 +661,7 @@ func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) <sp
         w.WriteHeader(http.StatusOK)
         _, err = w.Write(prettyJSON)
         if err != nil </span><span class="cov0" title="0">{
-                logger.Log.Error("failed to write response", zap.Error(err))
+                logger.Log.Error("failed to write response", slog.Any("error", err))
                 http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                 return
         }</span>
@@ -616,56 +674,89 @@ import (
         "github.com/max-marek-projects/loyalty-system/internal/service"
 )
 
-// Endpoints handler
+// Handler holds dependencies for HTTP handlers: service, worker limits, and cookie secret.
 type Handler struct {
         service            service.Service
         maxParallelWorkers int
         secretKey          string
 }
 
-// Get new endpoints handler
+// NewHandler creates a new Handler instance with the given service, worker limit, and secret key.
+// Parameters:
+//   - service: business logic layer implementation.
+//   - maxParallelWorkers: limit for concurrent background workers.
+//   - secretKey: key used for signing auth cookies.
+//
+// Returns a pointer to the initialized Handler.
 func NewHandler(service service.Service, maxParallelWorkers int, secretKey string) *Handler <span class="cov8" title="1">{
         return &amp;Handler{service: service, maxParallelWorkers: maxParallelWorkers, secretKey: secretKey}
 }</span>
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">package logger
+		<pre class="file" id="file7" style="display: none">// Package logger provides a global slog.Logger instance with configurable log level.
+package logger
 
 import (
         "fmt"
-
-        "go.uber.org/zap"
+        "io"
+        "log/slog"
+        "os"
 )
 
-var Log *zap.Logger = zap.NewNop()
+// Log is the global logger instance. Initially a no-op logger.
+var Log *slog.Logger
 
+// Initialize sets up the global logger with the specified log level.
+// Parameters:
+//   - level: log level from slog library.
+//
+// Returns an error if parsing the level or building the logger fails.
 func Initialize(level string) error <span class="cov8" title="1">{
-        lvl, err := zap.ParseAtomicLevel(level)
-        if err != nil </span><span class="cov8" title="1">{
-                return fmt.Errorf("failed to initialize logger: %w", err)
-        }</span>
-        <span class="cov8" title="1">cfg := zap.NewProductionConfig()
-        cfg.Level = lvl
-        zl, err := cfg.Build()
-        if err != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to initialize logger: %w", err)
-        }</span>
-        <span class="cov8" title="1">Log = zl
+        var lvl slog.Level
+        switch level </span>{
+        case "DEBUG":<span class="cov0" title="0">
+                lvl = slog.LevelDebug</span>
+        case "INFO":<span class="cov8" title="1">
+                lvl = slog.LevelInfo</span>
+        case "WARN":<span class="cov0" title="0">
+                lvl = slog.LevelWarn</span>
+        case "ERROR":<span class="cov0" title="0">
+                lvl = slog.LevelError</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("failed to initialize logger. error level is invalid: %s", level)</span>
+        }
+        <span class="cov8" title="1">opts := &amp;slog.HandlerOptions{Level: lvl}
+        handler := slog.NewJSONHandler(os.Stdout, opts)
+        Log = slog.New(handler)
+        slog.SetDefault(Log)
         return nil</span>
 }
+
+// initialize default logger
+func init() <span class="cov8" title="1">{
+        opts := &amp;slog.HandlerOptions{Level: slog.LevelInfo}
+        handler := slog.NewJSONHandler(io.Discard, opts)
+        Log = slog.New(handler)
+}</span>
 </pre>
 		
-		<pre class="file" id="file8" style="display: none">package middlewares
+		<pre class="file" id="file8" style="display: none">// Package middlewares provides HTTP middleware components for request processing.
+package middlewares
 
 import (
         "errors"
+        "log/slog"
         "net/http"
 
         "github.com/max-marek-projects/loyalty-system/internal/auth"
         "github.com/max-marek-projects/loyalty-system/internal/logger"
-        "go.uber.org/zap"
 )
 
+// AuthMiddleware returns a middleware that validates the JWT cookie.
+// Parameters:
+//   - secretKey: key used to verify the JWT signature.
+//
+// Returns a middleware function that rejects requests without a valid cookie.
 func AuthMiddleware(secretKey string) func(http.Handler) http.Handler <span class="cov8" title="1">{
         return func(next http.Handler) http.Handler </span><span class="cov8" title="1">{
                 return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
@@ -674,7 +765,7 @@ func AuthMiddleware(secretKey string) func(http.Handler) http.Handler <span clas
                         if err != nil </span><span class="cov8" title="1">{
                                 if !errors.Is(err, http.ErrNoCookie) </span><span class="cov0" title="0">{
                                         // invalid cookie -&gt; 401 Unauthorized
-                                        logger.Log.Error("Received invalid cookie", zap.Error(err))
+                                        logger.Log.Error("Received invalid cookie", slog.Any("error", err))
                                 }</span>
                                 <span class="cov8" title="1">http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
                                 return</span>
@@ -689,13 +780,18 @@ func AuthMiddleware(secretKey string) func(http.Handler) http.Handler <span clas
 
 import (
         "fmt"
+        "log/slog"
         "net/http"
         "time"
 
         "github.com/max-marek-projects/loyalty-system/internal/logger"
-        "go.uber.org/zap"
 )
 
+// RequestsLogger is a middleware that logs each HTTP request's URI, method, status, duration, and response size.
+// Parameters:
+//   - h: the next http.Handler in the chain.
+//
+// Returns an http.Handler that performs logging before delegating.
 func RequestsLogger(h http.Handler) http.Handler <span class="cov8" title="1">{
         logFn := func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
                 start := time.Now()
@@ -714,29 +810,31 @@ func RequestsLogger(h http.Handler) http.Handler <span class="cov8" title="1">{
 
                 logger.Log.Info(
                         "Processed request",
-                        zap.String("uri", r.RequestURI),
-                        zap.String("method", r.Method),
-                        zap.Int("status", responseData.status),
-                        zap.Duration("duration", duration),
-                        zap.Int("size", responseData.size),
+                        slog.String("uri", r.RequestURI),
+                        slog.String("method", r.Method),
+                        slog.Int("status", responseData.status),
+                        slog.Duration("duration", duration),
+                        slog.Int("size", responseData.size),
                 )
         }</span>
         <span class="cov8" title="1">return http.HandlerFunc(logFn)</span>
 }
 
 type (
-        responseData struct { // response data storage
+        // responseData holds HTTP response status code and body size for logging.
+        responseData struct {
                 status int
                 size   int
         }
 
-        // response data writer
+        // loggingResponseWriter wraps http.ResponseWriter to capture status code and body size.
         loggingResponseWriter struct {
                 http.ResponseWriter
                 responseData *responseData
         }
 )
 
+// Write captures the number of bytes written and delegates to the underlying ResponseWriter.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) <span class="cov8" title="1">{
         size, err := r.ResponseWriter.Write(b)
         r.responseData.size += size
@@ -746,13 +844,15 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) <span class="cov8" 
         <span class="cov8" title="1">return size, err</span>
 }
 
+// WriteHeader captures the status code and delegates to the underlying ResponseWriter.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) <span class="cov8" title="1">{
         r.ResponseWriter.WriteHeader(statusCode)
         r.responseData.status = statusCode
 }</span>
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">package models
+		<pre class="file" id="file10" style="display: none">// Package models defines data structures used across the loyalty system.
+package models
 
 import (
         "database/sql/driver"
@@ -761,29 +861,34 @@ import (
         "time"
 )
 
+// RegisterRequest represents the JSON payload for user registration and login.
 type RegisterRequest struct {
         Login    string `json:"login"`
         Password string `json:"password"`
 }
 
+// UserData holds user credentials for internal storage (login and password hash).
 type UserData struct {
         Login        string
         PasswordHash string
 }
 
+// OrderStatus represents the possible states of an order processing.
 type OrderStatus string
 
 const (
-        StatusNEW        OrderStatus = "NEW"
-        StatusPROCESSING OrderStatus = "PROCESSING"
-        StatusPROCESSED  OrderStatus = "PROCESSED"
-        StatusINVALID    OrderStatus = "INVALID"
+        StatusNEW        OrderStatus = "NEW"        // Order just created, not yet sent to accrual system.
+        StatusPROCESSING OrderStatus = "PROCESSING" // Order is being processed by accrual system.
+        StatusPROCESSED  OrderStatus = "PROCESSED"  // Order finished, accrual added to balance.
+        StatusINVALID    OrderStatus = "INVALID"    // Order number is invalid or processing failed.
 )
 
+// TimeRFC3339 is a wrapper over time.Time that marshals/unmarshals to RFC3339 JSON.
 type TimeRFC3339 struct {
         time.Time
 }
 
+// MarshalJSON outputs the time in RFC3339 format, or a zero-value sentinel.
 func (ct TimeRFC3339) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
         if ct.IsZero() </span><span class="cov8" title="1">{
                 return []byte(`"0001-01-01T00:00:00Z"`), nil
@@ -791,6 +896,7 @@ func (ct TimeRFC3339) MarshalJSON() ([]byte, error) <span class="cov8" title="1"
         <span class="cov8" title="1">return []byte(`"` + ct.Time.Format(time.RFC3339) + `"`), nil</span>
 }
 
+// UnmarshalJSON parses an RFC3339 string into TimeRFC3339.
 func (ct *TimeRFC3339) UnmarshalJSON(data []byte) error <span class="cov8" title="1">{
         s := strings.Trim(string(data), `"`)
         if s == "" || s == "null" </span><span class="cov8" title="1">{
@@ -805,6 +911,7 @@ func (ct *TimeRFC3339) UnmarshalJSON(data []byte) error <span class="cov8" title
         return nil</span>
 }
 
+// Scan implements sql.Scanner for TimeRFC3339.
 func (ct *TimeRFC3339) Scan(value interface{}) error <span class="cov8" title="1">{
         if value == nil </span><span class="cov8" title="1">{
                 ct.Time = time.Time{}
@@ -830,7 +937,7 @@ func (ct *TimeRFC3339) Scan(value interface{}) error <span class="cov8" title="1
         }
 }
 
-// driver.Valuer to
+// Value implements driver.Valuer for TimeRFC3339.
 func (ct TimeRFC3339) Value() (driver.Value, error) <span class="cov8" title="1">{
         if ct.IsZero() </span><span class="cov8" title="1">{
                 return nil, nil
@@ -838,43 +945,49 @@ func (ct TimeRFC3339) Value() (driver.Value, error) <span class="cov8" title="1"
         <span class="cov8" title="1">return ct.Time, nil</span>
 }
 
+// OrderData represents an order stored in the database.
 type OrderData struct {
-        ID         int64       `json:"-"`
-        Number     string      `json:"number"`
-        Status     OrderStatus `json:"status"`
-        Accrual    float64     `json:"accrual"`
-        UploadedAt TimeRFC3339 `json:"uploaded_at"`
+        ID         int64       `json:"-"`           // Internal database ID.
+        Number     string      `json:"number"`      // Order number (validated by Luhn).
+        Status     OrderStatus `json:"status"`      // Current processing status.
+        Accrual    float64     `json:"accrual"`     // Loyalty points earned.
+        UploadedAt TimeRFC3339 `json:"uploaded_at"` // When the order was added.
 }
 
+// ExternalStatus represents the status of an order in the accrual system.
 type ExternalStatus string
 
 const (
-        ExternalStatusREGISTERED = "REGISTERED"
-        ExternalStatusINVALID    = "INVALID"
-        ExternalStatusPROCESSING = "PROCESSING"
-        ExternalStatusPROCESSED  = "PROCESSED"
+        ExternalStatusREGISTERED = "REGISTERED" // Order is known but not yet processed.
+        ExternalStatusINVALID    = "INVALID"    // Order number is invalid.
+        ExternalStatusPROCESSING = "PROCESSING" // Order is being processed.
+        ExternalStatusPROCESSED  = "PROCESSED"  // Processing finished, accrual available.
 )
 
+// AccrualResponse is the response from the external accrual system.
 type AccrualResponse struct {
-        Order   string         `json:"order"`
-        Status  ExternalStatus `json:"status"`
-        Accrual float64        `json:"accrual"`
+        Order   string         `json:"order"`   // Order number.
+        Status  ExternalStatus `json:"status"`  // Status from external system.
+        Accrual float64        `json:"accrual"` // Calculated loyalty points.
 }
 
+// BalanceData represents the user's current balance and total withdrawn amount.
 type BalanceData struct {
-        Current   float64 `json:"current"`
-        Withdrawn float64 `json:"withdrawn"`
+        Current   float64 `json:"current"`   // Points available for withdrawal.
+        Withdrawn float64 `json:"withdrawn"` // Total points already withdrawn.
 }
 
+// WithdrawRequest is the JSON payload for a withdrawal request.
 type WithdrawRequest struct {
-        Order string  `json:"order"`
-        Sum   float64 `json:"sum"`
+        Order string  `json:"order"` // Order number to withdraw against.
+        Sum   float64 `json:"sum"`   // Amount to withdraw.
 }
 
+// WithdrawData represents a withdrawal record stored in the database.
 type WithdrawData struct {
-        Order       string      `json:"order"`
-        Sum         float64     `json:"sum"`
-        ProcessedAt TimeRFC3339 `json:"processed_at"`
+        Order       string      `json:"order"`        // Order number.
+        Sum         float64     `json:"sum"`          // Amount withdrawn.
+        ProcessedAt TimeRFC3339 `json:"processed_at"` // Timestamp of withdrawal.
 }
 </pre>
 		
@@ -885,22 +998,28 @@ import (
         "database/sql"
         "errors"
         "fmt"
+        "log/slog"
 
         "github.com/golang-migrate/migrate/v4"
         "github.com/max-marek-projects/loyalty-system/internal/config/db"
         "github.com/max-marek-projects/loyalty-system/internal/logger"
         "github.com/max-marek-projects/loyalty-system/internal/models"
-        "go.uber.org/zap"
 
-        _ "github.com/golang-migrate/migrate/v4/database/postgres" // required for migrations
-        _ "github.com/golang-migrate/migrate/v4/source/file"       // required for migrations
+        _ "github.com/golang-migrate/migrate/v4/database/postgres"
+        _ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
+// dbStorage implements Storage interface using PostgreSQL.
 type dbStorage struct {
         storage *sql.DB
         config  *db.DBConf
 }
 
+// NewDBStorage creates a new database storage instance and runs migrations.
+// Parameters:
+//   - dbURL: PostgreSQL connection string.
+//
+// Returns the storage instance or an error if connection or migration fails.
 func NewDBStorage(dbURL string) (*dbStorage, error) <span class="cov0" title="0">{
         config := db.NewDBConf(dbURL)
         storage, err := db.Connect(config)
@@ -918,9 +1037,9 @@ func NewDBStorage(dbURL string) (*dbStorage, error) <span class="cov0" title="0"
         <span class="cov0" title="0">return dbs, nil</span>
 }
 
-// run database migrations
+// runMigrations applies database migrations from the configured path.
 func (dbs *dbStorage) runMigrations() error <span class="cov0" title="0">{
-        logger.Log.Info("Running migrations", zap.String("path", dbs.config.MigrationsPath))
+        logger.Log.Info("Running migrations", slog.String("path", dbs.config.MigrationsPath))
         m, err := migrate.New(
                 "file://"+dbs.config.MigrationsPath,
                 dbs.config.URL,
@@ -935,7 +1054,11 @@ func (dbs *dbStorage) runMigrations() error <span class="cov0" title="0">{
         <span class="cov0" title="0">return nil</span>
 }
 
-// register user
+// RegisterUser inserts a new user into the database.
+// Parameters:
+//   - userData: login and hashed password.
+//
+// Returns the new user ID or error (ErrAlreadyInStorage if login exists).
 func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData) (int64, error) <span class="cov8" title="1">{
         var userID int64
         query := `--sql
@@ -954,7 +1077,8 @@ func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData
         <span class="cov8" title="1">return userID, nil</span>
 }
 
-// check user is present in storage
+// CheckUser retrieves user ID and hashed password by login.
+// Returns ErrUserNotFound if the login does not exist.
 func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, string, error) <span class="cov8" title="1">{
         var userID int64
         var hashedPassword string
@@ -972,7 +1096,9 @@ func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, st
         <span class="cov8" title="1">return userID, hashedPassword, nil</span>
 }
 
-// add new order to storage
+// AddOrder inserts a new order for a user, or returns existing order conflict.
+// Returns ErrAlreadyInStorage if order already belongs to the same user,
+// ErrStorageConflict if order belongs to another user.
 func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber string) error <span class="cov8" title="1">{
         var orderID int64
         query := `--sql
@@ -1003,7 +1129,7 @@ func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber st
         <span class="cov8" title="1">return ErrAlreadyInStorage</span>
 }
 
-// get all orders by user id
+// GetAllOrders returns all orders for a given user, ordered by upload time descending.
 func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov8" title="1">{
         query := `SELECT id, number, status, accrual, uploaded_at FROM orders WHERE user_id = $1 ORDER BY uploaded_at DESC`
         rows, err := dbs.storage.QueryContext(ctx, query, userID)
@@ -1025,7 +1151,7 @@ func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.
         <span class="cov8" title="1">return res, nil</span>
 }
 
-// get balance by user id
+// GetBalance returns the user's current balance and total withdrawn amount.
 func (dbs *dbStorage) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) <span class="cov8" title="1">{
         balanceData := &amp;models.BalanceData{}
         query := `SELECT balance, withdrawn FROM users WHERE id = $1`
@@ -1036,7 +1162,8 @@ func (dbs *dbStorage) GetBalance(ctx context.Context, userID int64) (*models.Bal
         <span class="cov8" title="1">return balanceData, nil</span>
 }
 
-// withdraw sum by order number
+// Withdraw processes a withdrawal using a transaction.
+// Returns ErrInsufficientFunds if balance is insufficient.
 func (dbs *dbStorage) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error <span class="cov0" title="0">{
         tx, err := dbs.storage.BeginTx(ctx, nil)
         if err != nil </span><span class="cov0" title="0">{
@@ -1082,7 +1209,7 @@ func (dbs *dbStorage) Withdraw(ctx context.Context, userID int64, orderNumber st
         <span class="cov0" title="0">return nil</span>
 }
 
-// get all withdrawals by user id
+// GetAllWithdrawals returns all withdrawal records for a user.
 func (dbs *dbStorage) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) <span class="cov8" title="1">{
         query := `SELECT order_number, sum, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC`
         rows, err := dbs.storage.QueryContext(ctx, query, userID)
@@ -1104,7 +1231,7 @@ func (dbs *dbStorage) GetAllWithdrawals(ctx context.Context, userID int64) ([]mo
         <span class="cov8" title="1">return res, nil</span>
 }
 
-// get all orders by user id
+// MarkAllProcessingAsNew resets all orders with status PROCESSING to NEW (e.g., after restart).
 func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error <span class="cov8" title="1">{
         query := `UPDATE orders
                 SET status = $1
@@ -1118,11 +1245,11 @@ func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error <span cl
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("Could not get affected rows: %v", err)
         }</span>
-        <span class="cov8" title="1">logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
+        <span class="cov8" title="1">logger.Log.Info("Successfully reset statuses.", slog.Int64("rowsAffected", rowsAffected))
         return nil</span>
 }
 
-// find new orders and mark them as pending
+// FindAndClaimNewOrders selects orders with status NEW, sets them to PROCESSING, and returns them.
 func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error) <span class="cov8" title="1">{
         query := `UPDATE orders
                 SET status = $1
@@ -1148,7 +1275,7 @@ func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.Order
         <span class="cov8" title="1">return res, nil</span>
 }
 
-// update order status
+// UpdateOrderStatus changes the status of an order by its ID.
 func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) error <span class="cov8" title="1">{
         query := `UPDATE orders
                 SET status = $1
@@ -1162,11 +1289,11 @@ func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, stat
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("Could not get affected rows: %v", err)
         }</span>
-        <span class="cov8" title="1">logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
+        <span class="cov8" title="1">logger.Log.Info("Successfully reset statuses.", slog.Int64("rowsAffected", rowsAffected))
         return nil</span>
 }
 
-// ProcessOrderAccrual updates status and user balance
+// ProcessOrderAccrual updates order status to PROCESSED, adds accrual to user balance (transactional).
 func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) (err error) <span class="cov8" title="1">{
         // start transaction
         tx, err := dbs.storage.BeginTx(ctx, nil)
@@ -1208,16 +1335,18 @@ func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, ac
                 return fmt.Errorf("commit transaction failed: %w", err)
         }</span>
         <span class="cov8" title="1">logger.Log.Info("Order accrual processed",
-                zap.Int64("orderID", orderID),
-                zap.Int64("userID", userID),
-                zap.Float64("accrual", accrual))
+                slog.Int64("orderID", orderID),
+                slog.Int64("userID", userID),
+                slog.Float64("accrual", accrual))
         return nil</span>
 }
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">package server
+		<pre class="file" id="file12" style="display: none">// Package server provides HTTP server setup with routing and middleware.
+package server
 
 import (
+        "log/slog"
         "net/http"
         "time"
 
@@ -1226,13 +1355,21 @@ import (
         "github.com/max-marek-projects/loyalty-system/internal/handlers"
         "github.com/max-marek-projects/loyalty-system/internal/logger"
         "github.com/max-marek-projects/loyalty-system/internal/middlewares"
-        "go.uber.org/zap"
 )
 
+// Server wraps http.Server with custom configuration.
 type Server struct {
         http.Server
 }
 
+// NewServer creates a new HTTP server with routes and middlewares.
+// Parameters:
+//   - addr: listening address (e.g., ":8080").
+//   - h: handler instance with business logic.
+//   - readTimeout, writeTimeout: timeouts for server.
+//   - cookieSecret: secret key for auth middleware.
+//
+// Returns a configured Server pointer.
 func NewServer(addr string, h *handlers.Handler, readTimeout, writeTimeout time.Duration, cookieSecret string) *Server <span class="cov8" title="1">{
         r := chi.NewRouter()
 
@@ -1265,8 +1402,10 @@ func NewServer(addr string, h *handlers.Handler, readTimeout, writeTimeout time.
         }</span>
 }
 
+// ListenAndServe starts the HTTP server and logs the address.
+// Returns an error if the server cannot start.
 func (s *Server) ListenAndServe() error <span class="cov8" title="1">{
-        logger.Log.Info("Starting server", zap.String("address", s.Addr))
+        logger.Log.Info("Starting server", slog.String("address", s.Addr))
         return s.Server.ListenAndServe()
 }</span>
 </pre>
@@ -1274,14 +1413,51 @@ func (s *Server) ListenAndServe() error <span class="cov8" title="1">{
 		<pre class="file" id="file13" style="display: none">package service
 
 import (
+        "errors"
+        "fmt"
+        "time"
+)
+
+// ErrorLoginAlreadyTaken is returned when registration login already exists.
+var ErrorLoginAlreadyTaken = errors.New("login already taken by other user")
+
+// ErrorWrongUsernamePassword is returned when login credentials are invalid.
+var ErrorWrongUsernamePassword = errors.New("wrong username or password")
+
+// ErrorOrdersConflict is returned when an order belongs to another user.
+var ErrorOrdersConflict = errors.New("orders conflicts with other user")
+
+// ErrorNumberNotValid is returned when order number fails Luhn validation.
+var ErrorNumberNotValid = errors.New("order number not valid by Luhn algorithm")
+
+// ErrInsufficientFunds is returned when withdrawal exceeds available balance.
+var ErrInsufficientFunds = errors.New("user has insufficient funds")
+
+// ErrorOrderNotYetProcessed is returned when the accrual system indicates the order is not ready.
+type ErrorOrderNotYetProcessed struct {
+        Err        error
+        RetryAfter time.Duration
+}
+
+func (e *ErrorOrderNotYetProcessed) Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf("Order not yet processed: %v. Retry after: %v", e.Err, e.RetryAfter)
+}</span>
+
+func (e *ErrorOrderNotYetProcessed) Unwrap() error <span class="cov8" title="1">{
+        return e.Err
+}</span>
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package service
+
+import (
         "context"
         "encoding/json"
         "errors"
         "fmt"
         "io"
-        "log"
+        "log/slog"
         "net/http"
-        "sync"
         "time"
 
         "math/rand/v2"
@@ -1290,12 +1466,14 @@ import (
         "github.com/max-marek-projects/loyalty-system/internal/models"
         "github.com/max-marek-projects/loyalty-system/internal/repository"
         "github.com/max-marek-projects/loyalty-system/internal/utils"
-        "go.uber.org/zap"
         "golang.org/x/crypto/bcrypt"
+        "golang.org/x/sync/errgroup"
 )
 
 //go:generate mockery --name=Service --output=../handlers --outpkg=handlers --filename=service_mock_test.go --with-expecter
 //go:generate mockery --name=Service --output=../server --outpkg=server --filename=service_mock_test.go --with-expecter
+
+// Service defines the business logic interface for the loyalty system.
 type Service interface {
         RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
         LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
@@ -1307,6 +1485,12 @@ type Service interface {
         StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool)
 }
 
+// NewEndpointService creates a service instance with the given storage and accrual system address.
+// Parameters:
+//   - storage: repository implementation.
+//   - accrualSystemAddress: base URL of the external accrual system.
+//
+// Returns the service or an error if resetting statuses fails.
 func NewEndpointService(storage repository.Storage, accrualSystemAddress string) (Service, error) <span class="cov0" title="0">{
         service := &amp;endpointService{storage: storage, accrualSystemAddress: accrualSystemAddress, httpClient: &amp;http.Client{Timeout: 10 * time.Second}}
         err := service.storage.MarkAllProcessingAsNew(context.Background())
@@ -1322,7 +1506,8 @@ type endpointService struct {
         httpClient           *http.Client
 }
 
-// register user in service
+// RegisterUser creates a new user with hashed password.
+// Returns ErrorLoginAlreadyTaken if login already exists.
 func (service *endpointService) RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov8" title="1">{
         hashed, err := bcrypt.GenerateFromPassword([]byte(userData.Password), bcrypt.DefaultCost)
         if err != nil </span><span class="cov0" title="0">{
@@ -1339,7 +1524,8 @@ func (service *endpointService) RegisterUser(ctx context.Context, userData model
         <span class="cov8" title="1">return userID, nil</span>
 }
 
-// login user in service
+// LoginUser validates credentials and returns user ID.
+// Returns ErrorWrongUsernamePassword if login or password is incorrect.
 func (service *endpointService) LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov8" title="1">{
         userID, hashedPassword, err := service.storage.CheckUser(ctx, userData.Login)
         if err != nil </span><span class="cov8" title="1">{
@@ -1355,7 +1541,9 @@ func (service *endpointService) LoginUser(ctx context.Context, userData models.R
         <span class="cov8" title="1">return userID, nil</span>
 }
 
-// add new order
+// AddOrder validates order number via Luhn and stores it.
+// Returns (true, nil) if new order added, (false, nil) if order already exists for this user,
+// or error (ErrorNumberNotValid, ErrorOrdersConflict).
 func (service *endpointService) AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error) <span class="cov8" title="1">{
         numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
         if !numberValid </span><span class="cov8" title="1">{
@@ -1374,7 +1562,7 @@ func (service *endpointService) AddOrder(ctx context.Context, userID int64, orde
         <span class="cov8" title="1">return true, nil</span>
 }
 
-// get all orders
+// GetAllOrders returns all orders belonging to a user.
 func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov8" title="1">{
         orders, err := service.storage.GetAllOrders(ctx, userID)
         if err != nil </span><span class="cov8" title="1">{
@@ -1383,7 +1571,7 @@ func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) 
         <span class="cov8" title="1">return orders, nil</span>
 }
 
-// get balance by user id
+// GetBalance returns the user's current balance and total withdrawn.
 func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) <span class="cov8" title="1">{
         balance, err := service.storage.GetBalance(ctx, userID)
         if err != nil </span><span class="cov8" title="1">{
@@ -1392,7 +1580,8 @@ func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*
         <span class="cov8" title="1">return balance, nil</span>
 }
 
-// get balance by user id
+// Withdraw processes a withdrawal after Luhn validation.
+// Returns ErrorNumberNotValid or ErrInsufficientFunds.
 func (service *endpointService) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error <span class="cov8" title="1">{
         numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
         if !numberValid </span><span class="cov8" title="1">{
@@ -1408,7 +1597,7 @@ func (service *endpointService) Withdraw(ctx context.Context, userID int64, orde
         <span class="cov8" title="1">return nil</span>
 }
 
-// get all user withdrawals
+// GetAllWithdrawals returns all withdrawal records for a user.
 func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) <span class="cov8" title="1">{
         withdrawals, err := service.storage.GetAllWithdrawals(ctx, userID)
         if err != nil </span><span class="cov8" title="1">{
@@ -1417,46 +1606,47 @@ func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID in
         <span class="cov8" title="1">return withdrawals, nil</span>
 }
 
-// poll storage, find new orders and start jobs to handle them
+// StartOrderProcessor launches background workers to poll the accrual system.
+// Parameters:
+//   - maxParallelWorkers: number of concurrent workers.
+//   - pollInterval: seconds between scanning for new orders.
+//   - mockExternalService: if true, uses mock accrual logic.
 func (service *endpointService) StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool) <span class="cov8" title="1">{
-        // Channel for orders to be processed
-        orderCh := make(chan models.OrderData, maxParallelWorkers*2)
-        // wait group for all workers to properly finish before exit
-        var wg sync.WaitGroup
-        for i := 0; i &lt; maxParallelWorkers; i++ </span><span class="cov8" title="1">{
-                wg.Add(1)
-                go service.worker(ctx, &amp;wg, orderCh, pollInterval, mockExternalService)
-        }</span>
+        // errorgroup for all workers to properly finish before exit
+        g, gctx := errgroup.WithContext(ctx)
+        g.SetLimit(maxParallelWorkers)
+        // prepared function to add order to queue
+        var submit func(models.OrderData)
+        submit = func(order models.OrderData) </span><span class="cov0" title="0">{
+                g.Go(func() error </span><span class="cov0" title="0">{
+                        return service.worker(gctx, order, pollInterval, mockExternalService, submit)
+                }</span>)
+        }
         // ticker to parse new orders
         <span class="cov8" title="1">ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
         defer ticker.Stop()
-        logger.Log.Info("Order processor started", zap.Int("parallelWorkers", maxParallelWorkers), zap.String("accrualSystem", service.accrualSystemAddress))
+        logger.Log.Info("Order processor started", slog.Int("parallelWorkers", maxParallelWorkers), slog.String("accrualSystem", service.accrualSystemAddress))
+        // main loop
         for </span><span class="cov8" title="1">{
                 select </span>{
-                case &lt;-ctx.Done():<span class="cov8" title="1">
-                        log.Println("Order processor shutting down...")
-                        close(orderCh)
-                        wg.Wait()
-                        logger.Log.Info("Order processor stopped.")
-                        return</span>
+                case &lt;-gctx.Done():<span class="cov8" title="1">
+                        logger.Log.Info("Order processor shutting down...")
+                        if err := g.Wait(); err != nil </span><span class="cov0" title="0">{
+                                logger.Log.Error("Order processor finished with error", slog.Any("error", err))
+                        }</span> else<span class="cov8" title="1"> {
+                                logger.Log.Info("Order processor stopped.")
+                        }</span>
+                        <span class="cov8" title="1">return</span>
                 case &lt;-ticker.C:<span class="cov0" title="0">
-                        orders, err := service.storage.FindAndClaimNewOrders(ctx)
+                        orders, err := service.storage.FindAndClaimNewOrders(gctx)
                         if err != nil </span><span class="cov0" title="0">{
-                                logger.Log.Error("Failed to fetch new orders", zap.Error(err))
-                                continue</span>
-                        }
-                        <span class="cov0" title="0">if len(orders) == 0 </span><span class="cov0" title="0">{
+                                logger.Log.Error("Failed to fetch new orders", slog.Any("error", err))
                                 continue</span>
                         }
                         <span class="cov0" title="0">for _, order := range orders </span><span class="cov0" title="0">{
-                                select </span>{
-                                case orderCh &lt;- order:<span class="cov0" title="0"></span>
-                                case &lt;-ctx.Done():<span class="cov0" title="0">
-                                        close(orderCh)
-                                        wg.Wait()
-                                        return</span>
-                                }
-                        }
+                                orderCopy := order
+                                submit(orderCopy)
+                        }</span>
                 }
         }
 }
@@ -1464,46 +1654,63 @@ func (service *endpointService) StartOrderProcessor(ctx context.Context, maxPara
 // worker processes orders from the channel by calling the accrual system.
 func (service *endpointService) worker(
         ctx context.Context,
-        wg *sync.WaitGroup,
-        orderCh chan models.OrderData,
+        order models.OrderData,
         pollInterval int,
         mockExternalService bool,
-) <span class="cov8" title="1">{
-        defer wg.Done()
-        for orderQueueItem := range orderCh </span><span class="cov0" title="0">{
-                result, err := service.parseAccrualSystem(ctx, orderQueueItem, orderCh, pollInterval, mockExternalService)
-                if errors.Is(err, ErrorOrderNotYetProcessed) </span><span class="cov0" title="0">{
-                        continue</span>
-                }
-                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
-                        log.Printf("Failed to process order %d: %v", orderQueueItem.ID, err)
-                        // Update order status to "failed" (optional, with error message)
-                        if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.ID, models.StatusINVALID); updateErr != nil </span><span class="cov0" title="0">{
-                                log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
-                        }</span>
-                        <span class="cov0" title="0">continue</span>
-                }
-                <span class="cov0" title="0">if result.Status == models.ExternalStatusINVALID </span><span class="cov0" title="0">{
-                        if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.ID, models.StatusINVALID); updateErr != nil </span><span class="cov0" title="0">{
-                                log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
-                        }</span>
-                        <span class="cov0" title="0">continue</span>
-                }
-                <span class="cov0" title="0">if result.Status == models.ExternalStatusPROCESSED </span><span class="cov0" title="0">{
-                        if updateErr := service.storage.ProcessOrderAccrual(ctx, orderQueueItem.ID, result.Accrual); updateErr != nil </span><span class="cov0" title="0">{
-                                log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
-                        }</span>
-                        <span class="cov0" title="0">continue</span>
-                }
-                <span class="cov0" title="0">logger.Log.Error("Unknown situation occurred. Wrong status", zap.String("status", string(result.Status)))</span>
+        submit func(models.OrderData),
+) error <span class="cov0" title="0">{
+        result, err := service.parseAccrualSystem(ctx, order, pollInterval, mockExternalService)
+        if err != nil </span><span class="cov0" title="0">{
+                var errorWithRetry *ErrorOrderNotYetProcessed
+                if errors.As(err, &amp;errorWithRetry) </span><span class="cov0" title="0">{
+                        // temporary error, planning to retry later
+                        service.scheduleRetry(ctx, order, errorWithRetry.RetryAfter, submit)
+                        return nil
+                }</span>
+                <span class="cov0" title="0">if err := service.storage.UpdateOrderStatus(ctx, order.ID, models.StatusINVALID); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        }
+
+        <span class="cov0" title="0">switch result.Status </span>{
+        case models.ExternalStatusINVALID:<span class="cov0" title="0">
+                if err := service.storage.UpdateOrderStatus(ctx, order.ID, models.StatusINVALID); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        case models.ExternalStatusPROCESSED:<span class="cov0" title="0">
+                if err := service.storage.ProcessOrderAccrual(ctx, order.ID, result.Accrual); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        default:<span class="cov0" title="0">
+                return fmt.Errorf("unknown status: %s", result.Status)</span>
         }
 }
 
-// receive response from accrual system
+// scheduleRetry runs goroutine that returns order in channel
+func (service *endpointService) scheduleRetry(ctx context.Context, order models.OrderData, delay time.Duration, submit func(models.OrderData)) <span class="cov0" title="0">{
+        go func() </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-ctx.Done():<span class="cov0" title="0">
+                        return</span>
+                case &lt;-time.After(delay):<span class="cov0" title="0">
+                        select </span>{
+                        case &lt;-ctx.Done():<span class="cov0" title="0">
+                                return</span>
+                        default:<span class="cov0" title="0">
+                                submit(order)</span>
+                        }
+                }
+        }()
+}
+
+// parseAccrualSystem contacts external system or mock, returns accrual response.
+// Returns ErrorOrderNotYetProcessed if order is not ready and should be retried.
 func (service *endpointService) parseAccrualSystem(
         ctx context.Context,
         order models.OrderData,
-        orderCh chan models.OrderData,
         pollInterval int,
         mockExternalService bool,
 ) (*models.AccrualResponse, error) <span class="cov0" title="0">{
@@ -1524,16 +1731,9 @@ func (service *endpointService) parseAccrualSystem(
         if err != nil </span><span class="cov0" title="0">{
                 if errors.Is(err, context.DeadlineExceeded) </span><span class="cov0" title="0">{
                         retryAfter := time.Duration(pollInterval) * time.Second
-                        go func(o models.OrderData, delay time.Duration) </span><span class="cov0" title="0">{
-                                time.Sleep(delay)
-                                select </span>{
-                                case orderCh &lt;- o:<span class="cov0" title="0"></span>
-                                case &lt;-ctx.Done():<span class="cov0" title="0"></span>
-                                }
-                        }(order, retryAfter)
-                        <span class="cov0" title="0">logger.Log.Debug("timeout received", zap.Duration("next attempt in", retryAfter))
-                        return nil, ErrorOrderNotYetProcessed</span>
-                }
+                        logger.Log.Debug("timeout received", slog.Duration("next attempt in", retryAfter))
+                        return nil, &amp;ErrorOrderNotYetProcessed{fmt.Errorf("timeout received: %w", err), retryAfter}
+                }</span>
                 <span class="cov0" title="0">return nil, fmt.Errorf("request failed: %w", err)</span>
         }
         <span class="cov0" title="0">defer resp.Body.Close()
@@ -1546,28 +1746,14 @@ func (service *endpointService) parseAccrualSystem(
                 }</span>
                 <span class="cov0" title="0">if result.Status == models.ExternalStatusREGISTERED || result.Status == models.ExternalStatusPROCESSING </span><span class="cov0" title="0">{
                         retryAfter := time.Duration(pollInterval) * time.Second
-                        go func(o models.OrderData, delay time.Duration) </span><span class="cov0" title="0">{
-                                time.Sleep(delay)
-                                select </span>{
-                                case orderCh &lt;- o:<span class="cov0" title="0"></span>
-                                case &lt;-ctx.Done():<span class="cov0" title="0"></span>
-                                }
-                        }(order, retryAfter)
-                        <span class="cov0" title="0">logger.Log.Debug("status shows not yet processed", zap.String("status", string(result.Status)), zap.Duration("next attempt in", retryAfter))
-                        return nil, ErrorOrderNotYetProcessed</span>
-                }
+                        logger.Log.Debug("status shows not yet processed", slog.String("status", string(result.Status)), slog.Duration("next attempt in", retryAfter))
+                        return nil, &amp;ErrorOrderNotYetProcessed{fmt.Errorf("status shows not yet processed"), retryAfter}
+                }</span>
                 <span class="cov0" title="0">return &amp;result, nil</span>
         case http.StatusNoContent:<span class="cov0" title="0"> // 204
                 retryAfter := time.Duration(pollInterval) * time.Second
-                go func(o models.OrderData, delay time.Duration) </span><span class="cov0" title="0">{
-                        time.Sleep(delay)
-                        select </span>{
-                        case orderCh &lt;- o:<span class="cov0" title="0"></span>
-                        case &lt;-ctx.Done():<span class="cov0" title="0"></span>
-                        }
-                }(order, retryAfter)
-                <span class="cov0" title="0">logger.Log.Debug("status code shows not yet registered", zap.Int("status code", resp.StatusCode), zap.Duration("next attempt in", retryAfter))
-                return nil, ErrorOrderNotYetProcessed</span>
+                logger.Log.Debug("status code shows not yet registered", slog.Int("status code", resp.StatusCode), slog.Duration("next attempt in", retryAfter))
+                return nil, &amp;ErrorOrderNotYetProcessed{fmt.Errorf("status code shows not yet registered"), retryAfter}</span>
 
         case http.StatusTooManyRequests:<span class="cov0" title="0"> // 429
                 retryAfterStr := resp.Header.Get("Retry-After")
@@ -1577,34 +1763,28 @@ func (service *endpointService) parseAccrualSystem(
                 }</span> else<span class="cov0" title="0"> {
                         retryAfter = time.Duration(pollInterval) * time.Second
                 }</span>
-                <span class="cov0" title="0">go func(o models.OrderData, delay time.Duration) </span><span class="cov0" title="0">{
-                        time.Sleep(delay)
-                        select </span>{
-                        case orderCh &lt;- o:<span class="cov0" title="0"></span>
-                        case &lt;-ctx.Done():<span class="cov0" title="0"></span>
-                        }
-                }(order, retryAfter)
-                <span class="cov0" title="0">logger.Log.Debug("status code shows too many requests", zap.Int("status code", resp.StatusCode), zap.Duration("next attempt in", retryAfter))
-                return nil, ErrorOrderNotYetProcessed</span>
+                <span class="cov0" title="0">return nil, &amp;ErrorOrderNotYetProcessed{fmt.Errorf("status code shows too many requests"), retryAfter}</span>
 
         case http.StatusInternalServerError:<span class="cov0" title="0"> // 500
                 body, _ := io.ReadAll(resp.Body)
-                return nil, fmt.Errorf("internal server error: %s", string(body))</span>
+                return nil, fmt.Errorf("internal server error: %s", body)</span>
 
         default:<span class="cov0" title="0">
                 body, _ := io.ReadAll(resp.Body)
-                return nil, fmt.Errorf("unexpected status code: code = %d, body = %s", resp.StatusCode, body)</span>
+                return nil, fmt.Errorf("unexpected status code %d, body: %s", resp.StatusCode, body)</span>
         }
 }
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">package utils
+		<pre class="file" id="file15" style="display: none">// Package utils provides helper functions for validation and parsing.
+package utils
 
 import (
         "strings"
 )
 
-// checks if a given string satisfies the Luhn algorithm.
+// ValidateLuhnAlgorithm checks if a number string satisfies the Luhn algorithm (mod 10).
+// Returns true for valid credit card‑style numbers, false otherwise.
 func ValidateLuhnAlgorithm(number string) bool <span class="cov8" title="1">{
         number = strings.ReplaceAll(number, " ", "")
         if len(number) &lt; 2 </span><span class="cov8" title="1">{
@@ -1631,13 +1811,15 @@ func ValidateLuhnAlgorithm(number string) bool <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file15" style="display: none">package utils
+		<pre class="file" id="file16" style="display: none">package utils
 
 import (
         "strconv"
         "time"
 )
 
+// ParseRetryAfter converts a Retry-After header value (seconds or RFC1123 date) into a time.Duration.
+// Returns 0 if parsing fails or if the duration is in the past.
 func ParseRetryAfter(headerVal string) time.Duration <span class="cov8" title="1">{
         if headerVal == "" </span><span class="cov8" title="1">{
                 return 0

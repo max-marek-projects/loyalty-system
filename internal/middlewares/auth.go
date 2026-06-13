@@ -3,11 +3,11 @@ package middlewares
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/max-marek-projects/loyalty-system/internal/auth"
 	"github.com/max-marek-projects/loyalty-system/internal/logger"
-	"go.uber.org/zap"
 )
 
 // AuthMiddleware returns a middleware that validates the JWT cookie.
@@ -23,7 +23,7 @@ func AuthMiddleware(secretKey string) func(http.Handler) http.Handler {
 			if err != nil {
 				if !errors.Is(err, http.ErrNoCookie) {
 					// invalid cookie -> 401 Unauthorized
-					logger.Log.Error("Received invalid cookie", zap.Error(err))
+					logger.Log.Error("Received invalid cookie", slog.Any("error", err))
 				}
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return

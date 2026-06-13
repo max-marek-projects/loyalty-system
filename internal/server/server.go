@@ -2,6 +2,7 @@
 package server
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/max-marek-projects/loyalty-system/internal/handlers"
 	"github.com/max-marek-projects/loyalty-system/internal/logger"
 	"github.com/max-marek-projects/loyalty-system/internal/middlewares"
-	"go.uber.org/zap"
 )
 
 // Server wraps http.Server with custom configuration.
@@ -61,6 +61,6 @@ func NewServer(addr string, h *handlers.Handler, readTimeout, writeTimeout time.
 // ListenAndServe starts the HTTP server and logs the address.
 // Returns an error if the server cannot start.
 func (s *Server) ListenAndServe() error {
-	logger.Log.Info("Starting server", zap.String("address", s.Addr))
+	logger.Log.Info("Starting server", slog.String("address", s.Addr))
 	return s.Server.ListenAndServe()
 }

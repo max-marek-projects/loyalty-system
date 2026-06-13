@@ -6,9 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
-	"sync"
 	"time"
 
 	"math/rand/v2"
@@ -17,8 +16,8 @@ import (
 	"github.com/max-marek-projects/loyalty-system/internal/models"
 	"github.com/max-marek-projects/loyalty-system/internal/repository"
 	"github.com/max-marek-projects/loyalty-system/internal/utils"
-	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/sync/errgroup"
 )
 
 //go:generate mockery --name=Service --output=../handlers --outpkg=handlers --filename=service_mock_test.go --with-expecter
@@ -163,43 +162,40 @@ func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID in
 //   - pollInterval: seconds between scanning for new orders.
 //   - mockExternalService: if true, uses mock accrual logic.
 func (service *endpointService) StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool) {
-	// Channel for orders to be processed
-	orderCh := make(chan models.OrderData, maxParallelWorkers*2)
-	// wait group for all workers to properly finish before exit
-	var wg sync.WaitGroup
-	for i := 0; i < maxParallelWorkers; i++ {
-		wg.Add(1)
-		go service.worker(ctx, &wg, orderCh, pollInterval, mockExternalService)
+	// errorgroup for all workers to properly finish before exit
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxParallelWorkers)
+	// prepared function to add order to queue
+	var submit func(models.OrderData)
+	submit = func(order models.OrderData) {
+		g.Go(func() error {
+			return service.worker(gctx, order, pollInterval, mockExternalService, submit)
+		})
 	}
 	// ticker to parse new orders
 	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
 	defer ticker.Stop()
-	logger.Log.Info("Order processor started", zap.Int("parallelWorkers", maxParallelWorkers), zap.String("accrualSystem", service.accrualSystemAddress))
+	logger.Log.Info("Order processor started", slog.Int("parallelWorkers", maxParallelWorkers), slog.String("accrualSystem", service.accrualSystemAddress))
+	// main loop
 	for {
 		select {
-		case <-ctx.Done():
-			log.Println("Order processor shutting down...")
-			close(orderCh)
-			wg.Wait()
-			logger.Log.Info("Order processor stopped.")
+		case <-gctx.Done():
+			logger.Log.Info("Order processor shutting down...")
+			if err := g.Wait(); err != nil {
+				logger.Log.Error("Order processor finished with error", slog.Any("error", err))
+			} else {
+				logger.Log.Info("Order processor stopped.")
+			}
 			return
 		case <-ticker.C:
-			orders, err := service.storage.FindAndClaimNewOrders(ctx)
+			orders, err := service.storage.FindAndClaimNewOrders(gctx)
 			if err != nil {
-				logger.Log.Error("Failed to fetch new orders", zap.Error(err))
-				continue
-			}
-			if len(orders) == 0 {
+				logger.Log.Error("Failed to fetch new orders", slog.Any("error", err))
 				continue
 			}
 			for _, order := range orders {
-				select {
-				case orderCh <- order:
-				case <-ctx.Done():
-					close(orderCh)
-					wg.Wait()
-					return
-				}
+				orderCopy := order
+				submit(orderCopy)
 			}
 		}
 	}
@@ -208,39 +204,56 @@ func (service *endpointService) StartOrderProcessor(ctx context.Context, maxPara
 // worker processes orders from the channel by calling the accrual system.
 func (service *endpointService) worker(
 	ctx context.Context,
-	wg *sync.WaitGroup,
-	orderCh chan models.OrderData,
+	order models.OrderData,
 	pollInterval int,
 	mockExternalService bool,
-) {
-	defer wg.Done()
-	for orderQueueItem := range orderCh {
-		result, err := service.parseAccrualSystem(ctx, orderQueueItem, orderCh, pollInterval, mockExternalService)
-		if errors.Is(err, ErrorOrderNotYetProcessed) {
-			continue
+	submit func(models.OrderData),
+) error {
+	result, err := service.parseAccrualSystem(ctx, order, pollInterval, mockExternalService)
+	if err != nil {
+		var errorWithRetry *ErrorOrderNotYetProcessed
+		if errors.As(err, &errorWithRetry) {
+			// temporary error, planning to retry later
+			service.scheduleRetry(ctx, order, errorWithRetry.RetryAfter, submit)
+			return nil
 		}
-		if err != nil {
-			log.Printf("Failed to process order %d: %v", orderQueueItem.ID, err)
-			// Update order status to "failed" (optional, with error message)
-			if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.ID, models.StatusINVALID); updateErr != nil {
-				log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
-			}
-			continue
+		if err := service.storage.UpdateOrderStatus(ctx, order.ID, models.StatusINVALID); err != nil {
+			logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
 		}
-		if result.Status == models.ExternalStatusINVALID {
-			if updateErr := service.storage.UpdateOrderStatus(ctx, orderQueueItem.ID, models.StatusINVALID); updateErr != nil {
-				log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
-			}
-			continue
-		}
-		if result.Status == models.ExternalStatusPROCESSED {
-			if updateErr := service.storage.ProcessOrderAccrual(ctx, orderQueueItem.ID, result.Accrual); updateErr != nil {
-				log.Printf("Failed to update order %d status: %v", orderQueueItem.ID, updateErr)
-			}
-			continue
-		}
-		logger.Log.Error("Unknown situation occurred. Wrong status", zap.String("status", string(result.Status)))
+		return nil
 	}
+
+	switch result.Status {
+	case models.ExternalStatusINVALID:
+		if err := service.storage.UpdateOrderStatus(ctx, order.ID, models.StatusINVALID); err != nil {
+			logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
+		}
+		return nil
+	case models.ExternalStatusPROCESSED:
+		if err := service.storage.ProcessOrderAccrual(ctx, order.ID, result.Accrual); err != nil {
+			logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown status: %s", result.Status)
+	}
+}
+
+// scheduleRetry runs goroutine that returns order in channel
+func (service *endpointService) scheduleRetry(ctx context.Context, order models.OrderData, delay time.Duration, submit func(models.OrderData)) {
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(delay):
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				submit(order)
+			}
+		}
+	}()
 }
 
 // parseAccrualSystem contacts external system or mock, returns accrual response.
@@ -248,7 +261,6 @@ func (service *endpointService) worker(
 func (service *endpointService) parseAccrualSystem(
 	ctx context.Context,
 	order models.OrderData,
-	orderCh chan models.OrderData,
 	pollInterval int,
 	mockExternalService bool,
 ) (*models.AccrualResponse, error) {
@@ -269,15 +281,8 @@ func (service *endpointService) parseAccrualSystem(
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			retryAfter := time.Duration(pollInterval) * time.Second
-			go func(o models.OrderData, delay time.Duration) {
-				time.Sleep(delay)
-				select {
-				case orderCh <- o:
-				case <-ctx.Done():
-				}
-			}(order, retryAfter)
-			logger.Log.Debug("timeout received", zap.Duration("next attempt in", retryAfter))
-			return nil, ErrorOrderNotYetProcessed
+			logger.Log.Debug("timeout received", slog.Duration("next attempt in", retryAfter))
+			return nil, &ErrorOrderNotYetProcessed{fmt.Errorf("timeout received: %w", err), retryAfter}
 		}
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -291,28 +296,14 @@ func (service *endpointService) parseAccrualSystem(
 		}
 		if result.Status == models.ExternalStatusREGISTERED || result.Status == models.ExternalStatusPROCESSING {
 			retryAfter := time.Duration(pollInterval) * time.Second
-			go func(o models.OrderData, delay time.Duration) {
-				time.Sleep(delay)
-				select {
-				case orderCh <- o:
-				case <-ctx.Done():
-				}
-			}(order, retryAfter)
-			logger.Log.Debug("status shows not yet processed", zap.String("status", string(result.Status)), zap.Duration("next attempt in", retryAfter))
-			return nil, ErrorOrderNotYetProcessed
+			logger.Log.Debug("status shows not yet processed", slog.String("status", string(result.Status)), slog.Duration("next attempt in", retryAfter))
+			return nil, &ErrorOrderNotYetProcessed{fmt.Errorf("status shows not yet processed"), retryAfter}
 		}
 		return &result, nil
 	case http.StatusNoContent: // 204
 		retryAfter := time.Duration(pollInterval) * time.Second
-		go func(o models.OrderData, delay time.Duration) {
-			time.Sleep(delay)
-			select {
-			case orderCh <- o:
-			case <-ctx.Done():
-			}
-		}(order, retryAfter)
-		logger.Log.Debug("status code shows not yet registered", zap.Int("status code", resp.StatusCode), zap.Duration("next attempt in", retryAfter))
-		return nil, ErrorOrderNotYetProcessed
+		logger.Log.Debug("status code shows not yet registered", slog.Int("status code", resp.StatusCode), slog.Duration("next attempt in", retryAfter))
+		return nil, &ErrorOrderNotYetProcessed{fmt.Errorf("status code shows not yet registered"), retryAfter}
 
 	case http.StatusTooManyRequests: // 429
 		retryAfterStr := resp.Header.Get("Retry-After")
@@ -322,22 +313,14 @@ func (service *endpointService) parseAccrualSystem(
 		} else {
 			retryAfter = time.Duration(pollInterval) * time.Second
 		}
-		go func(o models.OrderData, delay time.Duration) {
-			time.Sleep(delay)
-			select {
-			case orderCh <- o:
-			case <-ctx.Done():
-			}
-		}(order, retryAfter)
-		logger.Log.Debug("status code shows too many requests", zap.Int("status code", resp.StatusCode), zap.Duration("next attempt in", retryAfter))
-		return nil, ErrorOrderNotYetProcessed
+		return nil, &ErrorOrderNotYetProcessed{fmt.Errorf("status code shows too many requests"), retryAfter}
 
 	case http.StatusInternalServerError: // 500
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("internal server error: %s", string(body))
+		return nil, fmt.Errorf("internal server error: %s", body)
 
 	default:
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("unexpected status code: code = %d, body = %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("unexpected status code %d, body: %s", resp.StatusCode, body)
 	}
 }

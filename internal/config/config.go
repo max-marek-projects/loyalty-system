@@ -28,8 +28,19 @@ type Config struct {
 // LoadConfig parses configuration from .env, environment variables, and command-line flags.
 // Returns a pointer to the populated Config struct.
 func LoadConfig() *Config {
-	var config Config
-
+	config := &Config{
+		RunAddr:              ":8080",
+		LoggerLevel:          "INFO",
+		DatabaseURI:          "",
+		CookieSecret:         "",
+		MaxParallelWorkers:   5,
+		AccrualSystemAddress: "",
+		PollInterval:         5,
+		MockExternalService:  false,
+		ReadTimeout:          time.Duration(30) * time.Second,
+		WriteTimeout:         time.Duration(30) * time.Second,
+	}
+	// load env vars
 	err := godotenv.Load()
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -38,26 +49,21 @@ func LoadConfig() *Config {
 			log.Fatalf("Failed to load .env file: %v", err)
 		}
 	}
-	// read flags directly to config
-	flag.StringVar(&config.RunAddr, "a", ":8080", "address and port to run server")
-	flag.StringVar(&config.LoggerLevel, "l", "INFO", "logger level")
-	flag.StringVar(&config.DatabaseURI, "d", "", "database connection url")
-	flag.StringVar(&config.CookieSecret, "s", "", "cookie signing secret")
-	flag.IntVar(&config.MaxParallelWorkers, "p", 5, "maximum amount of parallel workers")
-	flag.StringVar(&config.AccrualSystemAddress, "r", "", "maximum concurrent parallel operations")
-	flag.IntVar(&config.PollInterval, "i", 5, "external service poll interval")
-	flag.BoolVar(&config.MockExternalService, "m", false, "mock external storage")
-	// read flags to temp vars
-	var readSec, writeSec int
-	flag.IntVar(&readSec, "t", 30, "server read timeout in seconds")
-	flag.IntVar(&writeSec, "w", 30, "server write timeout in seconds")
-	// parse flags
-	flag.Parse()
-	// parse temp vars to config struct
-	config.ReadTimeout = time.Duration(readSec) * time.Second
-	config.WriteTimeout = time.Duration(writeSec) * time.Second
-	if err := env.Parse(&config); err != nil {
+	if err := env.Parse(config); err != nil {
 		log.Printf("warning: failed to parse env: %v", err)
 	}
-	return &config
+	// read flags directly to config
+	flag.StringVar(&config.RunAddr, "a", config.RunAddr, "address and port to run server")
+	flag.StringVar(&config.LoggerLevel, "l", config.LoggerLevel, "logger level")
+	flag.StringVar(&config.DatabaseURI, "d", config.DatabaseURI, "database connection url")
+	flag.StringVar(&config.CookieSecret, "s", config.CookieSecret, "cookie signing secret")
+	flag.IntVar(&config.MaxParallelWorkers, "p", config.MaxParallelWorkers, "maximum amount of parallel workers")
+	flag.StringVar(&config.AccrualSystemAddress, "r", config.AccrualSystemAddress, "accrual system base address")
+	flag.IntVar(&config.PollInterval, "i", config.PollInterval, "external service poll interval")
+	flag.BoolVar(&config.MockExternalService, "m", config.MockExternalService, "mock external storage")
+	flag.DurationVar(&config.ReadTimeout, "t", config.ReadTimeout, "server read timeout in seconds")
+	flag.DurationVar(&config.WriteTimeout, "w", config.WriteTimeout, "server write timeout in seconds")
+	// parse flags
+	flag.Parse()
+	return config
 }

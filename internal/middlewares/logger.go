@@ -2,11 +2,11 @@ package middlewares
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/max-marek-projects/loyalty-system/internal/logger"
-	"go.uber.org/zap"
 )
 
 // RequestsLogger is a middleware that logs each HTTP request's URI, method, status, duration, and response size.
@@ -32,11 +32,11 @@ func RequestsLogger(h http.Handler) http.Handler {
 
 		logger.Log.Info(
 			"Processed request",
-			zap.String("uri", r.RequestURI),
-			zap.String("method", r.Method),
-			zap.Int("status", responseData.status),
-			zap.Duration("duration", duration),
-			zap.Int("size", responseData.size),
+			slog.String("uri", r.RequestURI),
+			slog.String("method", r.Method),
+			slog.Int("status", responseData.status),
+			slog.Duration("duration", duration),
+			slog.Int("size", responseData.size),
 		)
 	}
 	return http.HandlerFunc(logFn)

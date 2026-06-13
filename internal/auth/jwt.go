@@ -4,12 +4,12 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/max-marek-projects/loyalty-system/internal/logger"
-	"go.uber.org/zap"
 )
 
 const cookieName = "token"
@@ -28,7 +28,7 @@ type Claims struct {
 //
 // Returns an error if token signing fails.
 func SetUserCookie(w http.ResponseWriter, userID int64, secretKey string) error {
-	logger.Log.Info("Signing token with key", zap.String("key", secretKey))
+	logger.Log.Info("Signing token with key", slog.String("key", secretKey))
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),

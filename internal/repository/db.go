@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/max-marek-projects/loyalty-system/internal/config/db"
 	"github.com/max-marek-projects/loyalty-system/internal/logger"
 	"github.com/max-marek-projects/loyalty-system/internal/models"
-	"go.uber.org/zap"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -46,7 +46,7 @@ func NewDBStorage(dbURL string) (*dbStorage, error) {
 
 // runMigrations applies database migrations from the configured path.
 func (dbs *dbStorage) runMigrations() error {
-	logger.Log.Info("Running migrations", zap.String("path", dbs.config.MigrationsPath))
+	logger.Log.Info("Running migrations", slog.String("path", dbs.config.MigrationsPath))
 	m, err := migrate.New(
 		"file://"+dbs.config.MigrationsPath,
 		dbs.config.URL,
@@ -252,7 +252,7 @@ func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("Could not get affected rows: %v", err)
 	}
-	logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
+	logger.Log.Info("Successfully reset statuses.", slog.Int64("rowsAffected", rowsAffected))
 	return nil
 }
 
@@ -296,7 +296,7 @@ func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, stat
 	if err != nil {
 		return fmt.Errorf("Could not get affected rows: %v", err)
 	}
-	logger.Log.Info("Successfully reset statuses.", zap.Int64("rowsAffected", rowsAffected))
+	logger.Log.Info("Successfully reset statuses.", slog.Int64("rowsAffected", rowsAffected))
 	return nil
 }
 
@@ -342,8 +342,8 @@ func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, ac
 		return fmt.Errorf("commit transaction failed: %w", err)
 	}
 	logger.Log.Info("Order accrual processed",
-		zap.Int64("orderID", orderID),
-		zap.Int64("userID", userID),
-		zap.Float64("accrual", accrual))
+		slog.Int64("orderID", orderID),
+		slog.Int64("userID", userID),
+		slog.Float64("accrual", accrual))
 	return nil
 }
