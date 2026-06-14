@@ -39,7 +39,7 @@ func TestRegisterUser(t *testing.T) {
 			request:    models.RegisterRequest{Login: "taken", Password: "pass"},
 			repoUserID: 0,
 			repoErr:    repository.ErrAlreadyInStorage,
-			expected:   want{userID: 0, err: ErrorLoginAlreadyTaken},
+			expected:   want{userID: 0, err: ErrLoginAlreadyTaken},
 		},
 		{
 			name:       "repository error",
@@ -98,7 +98,7 @@ func TestLoginUser(t *testing.T) {
 			repoUserID:     123,
 			repoHashedPass: string(hashedPass),
 			repoErr:        nil,
-			expected:       want{userID: 0, err: ErrorWrongUsernamePassword},
+			expected:       want{userID: 0, err: ErrWrongUsernamePassword},
 		},
 		{
 			name:           "user not found",
@@ -106,7 +106,7 @@ func TestLoginUser(t *testing.T) {
 			repoUserID:     0,
 			repoHashedPass: "",
 			repoErr:        repository.ErrUserNotFound,
-			expected:       want{userID: 0, err: ErrorWrongUsernamePassword},
+			expected:       want{userID: 0, err: ErrWrongUsernamePassword},
 		},
 		{
 			name:           "repository error",
@@ -169,14 +169,14 @@ func TestAddOrder(t *testing.T) {
 			userID:      1,
 			orderNumber: validNumber,
 			repoErr:     repository.ErrStorageConflict,
-			expected:    want{added: false, err: ErrorOrdersConflict},
+			expected:    want{added: false, err: ErrOrdersConflict},
 		},
 		{
 			name:        "invalid order number",
 			userID:      1,
 			orderNumber: invalidNumber,
 			repoErr:     nil,
-			expected:    want{added: false, err: ErrorNumberNotValid},
+			expected:    want{added: false, err: ErrNumberNotValid},
 		},
 		{
 			name:        "repository error",
@@ -317,7 +317,7 @@ func TestWithdraw(t *testing.T) {
 			orderNumber: invalidNumber,
 			sum:         100,
 			repoErr:     nil,
-			expectedErr: ErrorNumberNotValid,
+			expectedErr: ErrNumberNotValid,
 		},
 		{
 			name:        "insufficient funds",

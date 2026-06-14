@@ -13,7 +13,7 @@ func TestErrorOrderNotYetProcessed(t *testing.T) {
 	innerErr := errors.New("test error")
 	retry := time.Duration(5) * time.Second
 
-	errObj := &ErrorOrderNotYetProcessed{
+	errObj := &ErrOrderNotYetProcessed{
 		Err:        innerErr,
 		RetryAfter: retry,
 	}
@@ -32,14 +32,14 @@ func TestErrorOrderNotYetProcessed(t *testing.T) {
 	})
 
 	t.Run("errors.As works", func(t *testing.T) {
-		var target *ErrorOrderNotYetProcessed
+		var target *ErrOrderNotYetProcessed
 		assert.True(t, errors.As(errObj, &target))
 		assert.Equal(t, errObj, target)
 	})
 }
 
 func TestErrorOrderNotYetProcessed_NilInnerError(t *testing.T) {
-	errObj := &ErrorOrderNotYetProcessed{
+	errObj := &ErrOrderNotYetProcessed{
 		Err:        nil,
 		RetryAfter: 0,
 	}

@@ -54,7 +54,7 @@ func TestRegisterUser(t *testing.T) {
 	var userIDCookieError int64 = 314
 	mockService := NewService(t)
 	mockService.EXPECT().RegisterUser(mock.Anything, validUserData).Return(registeredUserID, nil)
-	mockService.EXPECT().RegisterUser(mock.Anything, alreadyTakenUserData).Return(0, service.ErrorLoginAlreadyTaken)
+	mockService.EXPECT().RegisterUser(mock.Anything, alreadyTakenUserData).Return(0, service.ErrLoginAlreadyTaken)
 	mockService.EXPECT().RegisterUser(mock.Anything, brokenUserData).Return(0, fmt.Errorf("some broken data"))
 	mockService.EXPECT().RegisterUser(mock.Anything, validUserCookieErrorData).Return(userIDCookieError, nil)
 
@@ -162,7 +162,7 @@ func TestLoginUser(t *testing.T) {
 	var userIDCookieError int64 = 314
 	mockService := NewService(t)
 	mockService.EXPECT().LoginUser(mock.Anything, validUserData).Return(registeredUserID, nil)
-	mockService.EXPECT().LoginUser(mock.Anything, wrongUserData).Return(0, service.ErrorWrongUsernamePassword)
+	mockService.EXPECT().LoginUser(mock.Anything, wrongUserData).Return(0, service.ErrWrongUsernamePassword)
 	mockService.EXPECT().LoginUser(mock.Anything, brokenUserData).Return(0, fmt.Errorf("some broken data"))
 	mockService.EXPECT().LoginUser(mock.Anything, validUserCookieErrorData).Return(userIDCookieError, nil)
 
@@ -260,7 +260,7 @@ func TestNewOrder(t *testing.T) {
 	mockService := NewService(t)
 	mockService.EXPECT().AddOrder(mock.Anything, testUserID, validOrderNumber).Return(true, nil)
 	mockService.EXPECT().AddOrder(mock.Anything, testUserID, existingOrderNumber).Return(false, nil)
-	mockService.EXPECT().AddOrder(mock.Anything, testUserID, notValidNumber).Return(false, service.ErrorNumberNotValid)
+	mockService.EXPECT().AddOrder(mock.Anything, testUserID, notValidNumber).Return(false, service.ErrNumberNotValid)
 
 	ts := httptest.NewServer(newAPITestRouter(mockService))
 	defer ts.Close()
@@ -484,7 +484,7 @@ func TestWithdraw(t *testing.T) {
 	mockService := NewService(t)
 	mockService.EXPECT().Withdraw(mock.Anything, testUserID, validOrder, 100.0).Return(nil).Once()
 	mockService.EXPECT().Withdraw(mock.Anything, testUserID, insufficientOrder, 1000.0).Return(service.ErrInsufficientFunds).Once()
-	mockService.EXPECT().Withdraw(mock.Anything, testUserID, invalidOrder, 100.0).Return(service.ErrorNumberNotValid).Once()
+	mockService.EXPECT().Withdraw(mock.Anything, testUserID, invalidOrder, 100.0).Return(service.ErrNumberNotValid).Once()
 
 	ts := httptest.NewServer(newAPITestRouter(mockService))
 	defer ts.Close()

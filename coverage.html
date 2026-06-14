@@ -438,7 +438,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) <span cla
         }</span>
         <span class="cov8" title="1">userID, err := h.service.RegisterUser(r.Context(), requestData)
         if err != nil </span><span class="cov8" title="1">{
-                if errors.Is(err, service.ErrorLoginAlreadyTaken) </span><span class="cov8" title="1">{
+                if errors.Is(err, service.ErrLoginAlreadyTaken) </span><span class="cov8" title="1">{
                         http.Error(w, "Login already taken", http.StatusConflict)
                         return
                 }</span>
@@ -469,7 +469,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) <span class=
         }</span>
         <span class="cov8" title="1">userID, err := h.service.LoginUser(r.Context(), requestData)
         if err != nil </span><span class="cov8" title="1">{
-                if errors.Is(err, service.ErrorWrongUsernamePassword) </span><span class="cov8" title="1">{
+                if errors.Is(err, service.ErrWrongUsernamePassword) </span><span class="cov8" title="1">{
                         http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
                         return
                 }</span>
@@ -505,11 +505,11 @@ func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="
         }</span>
         <span class="cov8" title="1">added, err := h.service.AddOrder(r.Context(), userID, string(body))
         if err != nil </span><span class="cov8" title="1">{
-                if errors.Is(err, service.ErrorOrdersConflict) </span><span class="cov0" title="0">{
+                if errors.Is(err, service.ErrOrdersConflict) </span><span class="cov0" title="0">{
                         http.Error(w, "Order number already taken by other user", http.StatusConflict)
                         return
                 }</span>
-                <span class="cov8" title="1">if errors.Is(err, service.ErrorNumberNotValid) </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if errors.Is(err, service.ErrNumberNotValid) </span><span class="cov8" title="1">{
                         http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
                         return
                 }</span>
@@ -616,7 +616,7 @@ func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) <span class="
         }</span>
         <span class="cov8" title="1">err = h.service.Withdraw(r.Context(), userID, withdrawData.Order, withdrawData.Sum)
         if err != nil </span><span class="cov8" title="1">{
-                if errors.Is(err, service.ErrorNumberNotValid) </span><span class="cov8" title="1">{
+                if errors.Is(err, service.ErrNumberNotValid) </span><span class="cov8" title="1">{
                         http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
                         return
                 }</span>
@@ -1418,32 +1418,32 @@ import (
         "time"
 )
 
-// ErrorLoginAlreadyTaken is returned when registration login already exists.
-var ErrorLoginAlreadyTaken = errors.New("login already taken by other user")
+// ErrLoginAlreadyTaken is returned when registration login already exists.
+var ErrLoginAlreadyTaken = errors.New("login already taken by other user")
 
-// ErrorWrongUsernamePassword is returned when login credentials are invalid.
-var ErrorWrongUsernamePassword = errors.New("wrong username or password")
+// ErrWrongUsernamePassword is returned when login credentials are invalid.
+var ErrWrongUsernamePassword = errors.New("wrong username or password")
 
-// ErrorOrdersConflict is returned when an order belongs to another user.
-var ErrorOrdersConflict = errors.New("orders conflicts with other user")
+// ErrOrdersConflict is returned when an order belongs to another user.
+var ErrOrdersConflict = errors.New("orders conflicts with other user")
 
-// ErrorNumberNotValid is returned when order number fails Luhn validation.
-var ErrorNumberNotValid = errors.New("order number not valid by Luhn algorithm")
+// ErrNumberNotValid is returned when order number fails Luhn validation.
+var ErrNumberNotValid = errors.New("order number not valid by Luhn algorithm")
 
 // ErrInsufficientFunds is returned when withdrawal exceeds available balance.
 var ErrInsufficientFunds = errors.New("user has insufficient funds")
 
-// ErrorOrderNotYetProcessed is returned when the accrual system indicates the order is not ready.
-type ErrorOrderNotYetProcessed struct {
+// ErrOrderNotYetProcessed is returned when the accrual system indicates the order is not ready.
+type ErrOrderNotYetProcessed struct {
         Err        error
         RetryAfter time.Duration
 }
 
-func (e *ErrorOrderNotYetProcessed) Error() string <span class="cov8" title="1">{
+func (e *ErrOrderNotYetProcessed) Error() string <span class="cov8" title="1">{
         return fmt.Sprintf("Order not yet processed: %v. Retry after: %v", e.Err, e.RetryAfter)
 }</span>
 
-func (e *ErrorOrderNotYetProcessed) Unwrap() error <span class="cov8" title="1">{
+func (e *ErrOrderNotYetProcessed) Unwrap() error <span class="cov8" title="1">{
         return e.Err
 }</span>
 </pre>
@@ -1517,7 +1517,7 @@ func (service *endpointService) RegisterUser(ctx context.Context, userData model
         userID, err := service.storage.RegisterUser(ctx, hashedUserData)
         if err != nil </span><span class="cov8" title="1">{
                 if errors.Is(err, repository.ErrAlreadyInStorage) </span><span class="cov8" title="1">{
-                        return 0, ErrorLoginAlreadyTaken
+                        return 0, ErrLoginAlreadyTaken
                 }</span>
                 <span class="cov8" title="1">return 0, fmt.Errorf("failed to register user in storage: %v", err)</span>
         }
@@ -1530,13 +1530,13 @@ func (service *endpointService) LoginUser(ctx context.Context, userData models.R
         userID, hashedPassword, err := service.storage.CheckUser(ctx, userData.Login)
         if err != nil </span><span class="cov8" title="1">{
                 if errors.Is(err, repository.ErrUserNotFound) </span><span class="cov8" title="1">{
-                        return 0, ErrorWrongUsernamePassword
+                        return 0, ErrWrongUsernamePassword
                 }</span>
                 <span class="cov8" title="1">return 0, fmt.Errorf("failed to check user in storage: %v", err)</span>
         }
         <span class="cov8" title="1">err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(userData.Password))
         if err != nil </span><span class="cov8" title="1">{
-                return 0, ErrorWrongUsernamePassword
+                return 0, ErrWrongUsernamePassword
         }</span>
         <span class="cov8" title="1">return userID, nil</span>
 }
@@ -1547,7 +1547,7 @@ func (service *endpointService) LoginUser(ctx context.Context, userData models.R
 func (service *endpointService) AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error) <span class="cov8" title="1">{
         numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
         if !numberValid </span><span class="cov8" title="1">{
-                return false, ErrorNumberNotValid
+                return false, ErrNumberNotValid
         }</span>
         <span class="cov8" title="1">err := service.storage.AddOrder(ctx, userID, orderNumber)
         if err != nil </span><span class="cov8" title="1">{
@@ -1555,7 +1555,7 @@ func (service *endpointService) AddOrder(ctx context.Context, userID int64, orde
                         return false, nil
                 }</span>
                 <span class="cov8" title="1">if errors.Is(err, repository.ErrStorageConflict) </span><span class="cov8" title="1">{
-                        return false, ErrorOrdersConflict
+                        return false, ErrOrdersConflict
                 }</span>
                 <span class="cov8" title="1">return false, fmt.Errorf("failed to check user in storage: %v", err)</span>
         }
@@ -1585,7 +1585,7 @@ func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*
 func (service *endpointService) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error <span class="cov8" title="1">{
         numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
         if !numberValid </span><span class="cov8" title="1">{
-                return ErrorNumberNotValid
+                return ErrNumberNotValid
         }</span>
         <span class="cov8" title="1">err := service.storage.Withdraw(ctx, userID, orderNumber, sum)
         if err != nil </span><span class="cov8" title="1">{
@@ -1661,7 +1661,7 @@ func (service *endpointService) worker(
 ) error <span class="cov0" title="0">{
         result, err := service.parseAccrualSystem(ctx, order, pollInterval, mockExternalService)
         if err != nil </span><span class="cov0" title="0">{
-                var errorWithRetry *ErrorOrderNotYetProcessed
+                var errorWithRetry *ErrOrderNotYetProcessed
                 if errors.As(err, &amp;errorWithRetry) </span><span class="cov0" title="0">{
                         // temporary error, planning to retry later
                         service.scheduleRetry(ctx, order, errorWithRetry.RetryAfter, submit)
@@ -1732,7 +1732,7 @@ func (service *endpointService) parseAccrualSystem(
                 if errors.Is(err, context.DeadlineExceeded) </span><span class="cov0" title="0">{
                         retryAfter := time.Duration(pollInterval) * time.Second
                         logger.Log.Debug("timeout received", slog.Duration("next attempt in", retryAfter))
-                        return nil, &amp;ErrorOrderNotYetProcessed{fmt.Errorf("timeout received: %w", err), retryAfter}
+                        return nil, &amp;ErrOrderNotYetProcessed{fmt.Errorf("timeout received: %w", err), retryAfter}
                 }</span>
                 <span class="cov0" title="0">return nil, fmt.Errorf("request failed: %w", err)</span>
         }
@@ -1747,13 +1747,13 @@ func (service *endpointService) parseAccrualSystem(
                 <span class="cov0" title="0">if result.Status == models.ExternalStatusREGISTERED || result.Status == models.ExternalStatusPROCESSING </span><span class="cov0" title="0">{
                         retryAfter := time.Duration(pollInterval) * time.Second
                         logger.Log.Debug("status shows not yet processed", slog.String("status", string(result.Status)), slog.Duration("next attempt in", retryAfter))
-                        return nil, &amp;ErrorOrderNotYetProcessed{fmt.Errorf("status shows not yet processed"), retryAfter}
+                        return nil, &amp;ErrOrderNotYetProcessed{fmt.Errorf("status shows not yet processed"), retryAfter}
                 }</span>
                 <span class="cov0" title="0">return &amp;result, nil</span>
         case http.StatusNoContent:<span class="cov0" title="0"> // 204
                 retryAfter := time.Duration(pollInterval) * time.Second
                 logger.Log.Debug("status code shows not yet registered", slog.Int("status code", resp.StatusCode), slog.Duration("next attempt in", retryAfter))
-                return nil, &amp;ErrorOrderNotYetProcessed{fmt.Errorf("status code shows not yet registered"), retryAfter}</span>
+                return nil, &amp;ErrOrderNotYetProcessed{fmt.Errorf("status code shows not yet registered"), retryAfter}</span>
 
         case http.StatusTooManyRequests:<span class="cov0" title="0"> // 429
                 retryAfterStr := resp.Header.Get("Retry-After")
@@ -1763,7 +1763,7 @@ func (service *endpointService) parseAccrualSystem(
                 }</span> else<span class="cov0" title="0"> {
                         retryAfter = time.Duration(pollInterval) * time.Second
                 }</span>
-                <span class="cov0" title="0">return nil, &amp;ErrorOrderNotYetProcessed{fmt.Errorf("status code shows too many requests"), retryAfter}</span>
+                <span class="cov0" title="0">return nil, &amp;ErrOrderNotYetProcessed{fmt.Errorf("status code shows too many requests"), retryAfter}</span>
 
         case http.StatusInternalServerError:<span class="cov0" title="0"> // 500
                 body, _ := io.ReadAll(resp.Body)

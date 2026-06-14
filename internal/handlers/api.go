@@ -30,7 +30,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 	userID, err := h.service.RegisterUser(r.Context(), requestData)
 	if err != nil {
-		if errors.Is(err, service.ErrorLoginAlreadyTaken) {
+		if errors.Is(err, service.ErrLoginAlreadyTaken) {
 			http.Error(w, "Login already taken", http.StatusConflict)
 			return
 		}
@@ -61,7 +61,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 	userID, err := h.service.LoginUser(r.Context(), requestData)
 	if err != nil {
-		if errors.Is(err, service.ErrorWrongUsernamePassword) {
+		if errors.Is(err, service.ErrWrongUsernamePassword) {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
@@ -97,11 +97,11 @@ func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	added, err := h.service.AddOrder(r.Context(), userID, string(body))
 	if err != nil {
-		if errors.Is(err, service.ErrorOrdersConflict) {
+		if errors.Is(err, service.ErrOrdersConflict) {
 			http.Error(w, "Order number already taken by other user", http.StatusConflict)
 			return
 		}
-		if errors.Is(err, service.ErrorNumberNotValid) {
+		if errors.Is(err, service.ErrNumberNotValid) {
 			http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
 			return
 		}
@@ -208,7 +208,7 @@ func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.service.Withdraw(r.Context(), userID, withdrawData.Order, withdrawData.Sum)
 	if err != nil {
-		if errors.Is(err, service.ErrorNumberNotValid) {
+		if errors.Is(err, service.ErrNumberNotValid) {
 			http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
 			return
 		}
