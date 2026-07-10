@@ -1,0 +1,1876 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>gophermart: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/max-marek-projects/loyalty-system/cmd/gophermart/main.go (0.0%)</option>
+				
+				<option value="file1">github.com/max-marek-projects/loyalty-system/internal/auth/jwt.go (90.0%)</option>
+				
+				<option value="file2">github.com/max-marek-projects/loyalty-system/internal/config/config.go (90.0%)</option>
+				
+				<option value="file3">github.com/max-marek-projects/loyalty-system/internal/config/db/config.go (100.0%)</option>
+				
+				<option value="file4">github.com/max-marek-projects/loyalty-system/internal/config/db/connection.go (0.0%)</option>
+				
+				<option value="file5">github.com/max-marek-projects/loyalty-system/internal/handlers/api.go (74.9%)</option>
+				
+				<option value="file6">github.com/max-marek-projects/loyalty-system/internal/handlers/handlers.go (100.0%)</option>
+				
+				<option value="file7">github.com/max-marek-projects/loyalty-system/internal/logger/logger.go (80.0%)</option>
+				
+				<option value="file8">github.com/max-marek-projects/loyalty-system/internal/middlewares/auth.go (88.9%)</option>
+				
+				<option value="file9">github.com/max-marek-projects/loyalty-system/internal/middlewares/logger.go (93.3%)</option>
+				
+				<option value="file10">github.com/max-marek-projects/loyalty-system/internal/models/models.go (100.0%)</option>
+				
+				<option value="file11">github.com/max-marek-projects/loyalty-system/internal/repository/db.go (68.8%)</option>
+				
+				<option value="file12">github.com/max-marek-projects/loyalty-system/internal/server/server.go (100.0%)</option>
+				
+				<option value="file13">github.com/max-marek-projects/loyalty-system/internal/service/errors.go (100.0%)</option>
+				
+				<option value="file14">github.com/max-marek-projects/loyalty-system/internal/service/service.go (45.3%)</option>
+				
+				<option value="file15">github.com/max-marek-projects/loyalty-system/internal/utils/algorithms.go (100.0%)</option>
+				
+				<option value="file16">github.com/max-marek-projects/loyalty-system/internal/utils/headers.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "errors"
+        "log/slog"
+        "net/http"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+
+        "github.com/max-marek-projects/loyalty-system/internal/config"
+        "github.com/max-marek-projects/loyalty-system/internal/handlers"
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
+        "github.com/max-marek-projects/loyalty-system/internal/repository"
+        "github.com/max-marek-projects/loyalty-system/internal/server"
+        "github.com/max-marek-projects/loyalty-system/internal/service"
+)
+
+// entry point
+func main() <span class="cov0" title="0">{
+        configData := config.LoadConfig()
+        err := logger.Initialize(configData.LoggerLevel)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("Unable to initialize logger", slog.Any("error", err))
+                os.Exit(1)
+        }</span>
+        <span class="cov0" title="0">store, err := repository.NewDBStorage(configData.DatabaseURI)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("Unable to create storage", slog.Any("error", err))
+                os.Exit(1)
+        }</span>
+        <span class="cov0" title="0">service, err := service.NewEndpointService(store, configData.AccrualSystemAddress)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("Unable to create service", slog.Any("error", err))
+                os.Exit(1)
+        }</span>
+        // create context with cancel for orders processing
+        <span class="cov0" title="0">ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+        go service.StartOrderProcessor(ctx, configData.MaxParallelWorkers, configData.PollInterval, configData.MockExternalService)
+        handler := handlers.NewHandler(service, configData.MaxParallelWorkers, configData.CookieSecret)
+        srv := server.NewServer(configData.RunAddr, handler, configData.ReadTimeout, configData.WriteTimeout, configData.CookieSecret)
+
+        // create separate goroutine
+        serverErr := make(chan error, 1)
+        go func() </span><span class="cov0" title="0">{
+                serverErr &lt;- srv.ListenAndServe()
+        }</span>()
+
+        <span class="cov0" title="0">stop := make(chan os.Signal, 1)
+        signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+        defer signal.Stop(stop)
+
+        select </span>{
+        case sig := &lt;-stop:<span class="cov0" title="0">
+                logger.Log.Info("Shutdown signal received",
+                        slog.String("signal", sig.String()),
+                )
+                cancel()
+
+                ctxShutdown, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+                defer cancelShutdown()
+                if err := srv.Shutdown(ctxShutdown); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error("Graceful shutdown failed", slog.Any("error", err))
+                }</span> else<span class="cov0" title="0"> {
+                        logger.Log.Info("Server stopped gracefully")
+                }</span>
+                // additional time for workers to shut down
+                <span class="cov0" title="0">time.Sleep(2 * time.Second)</span>
+
+        case err := &lt;-serverErr:<span class="cov0" title="0">
+                if err != nil &amp;&amp; !errors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
+                        logger.Log.Error("Server stopped with error", slog.Any("error", err))
+                        os.Exit(1)
+                }</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Package auth provides JWT-based authentication using HTTP cookies.
+package auth
+
+import (
+        "errors"
+        "fmt"
+        "log/slog"
+        "net/http"
+        "time"
+
+        "github.com/golang-jwt/jwt/v4"
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
+)
+
+const cookieName = "token"
+
+// Claims represents the JWT claims containing a user ID.
+type Claims struct {
+        jwt.RegisteredClaims
+        UserID int64 // Unique user identifier.
+}
+
+// SetUserCookie creates a signed JWT for the given user ID and sets it as an HTTP cookie.
+// Parameters:
+//   - w: ResponseWriter to write the cookie.
+//   - userID: ID to embed in the token.
+//   - secretKey: key used for signing.
+//
+// Returns an error if token signing fails.
+func SetUserCookie(w http.ResponseWriter, userID int64, secretKey string) error <span class="cov8" title="1">{
+        logger.Log.Info("Signing token with key", slog.String("key", secretKey))
+        claims := Claims{
+                RegisteredClaims: jwt.RegisteredClaims{
+                        ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+                },
+                UserID: userID,
+        }
+        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+        tokenString, err := token.SignedString([]byte(secretKey))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">http.SetCookie(w, &amp;http.Cookie{
+                Name:     cookieName,
+                Value:    tokenString,
+                Path:     "/",
+                HttpOnly: true,
+                SameSite: http.SameSiteLaxMode,
+        })
+        return nil</span>
+}
+
+// extractUserIDFromToken parses a JWT string, validates its signature, and returns the user ID.
+// Parameters:
+//   - token: raw JWT string.
+//   - secretKey: key for signature verification.
+//
+// Returns the user ID on success or an error if parsing or validation fails.
+func extractUserIDFromToken(token string, secretKey string) (int64, error) <span class="cov8" title="1">{
+        claims := &amp;Claims{}
+        tokenData, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) </span><span class="cov8" title="1">{
+                return []byte(secretKey), nil
+        }</span>)
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                return 0, fmt.Errorf("failed to parse jwt: %v", err)
+        }</span>
+        <span class="cov8" title="1">if !tokenData.Valid </span><span class="cov0" title="0">{
+                return 0, errors.New("invalid token")
+        }</span>
+        <span class="cov8" title="1">return claims.UserID, nil</span>
+}
+
+// GetUserIDFromRequest extracts the JWT from the request cookie and returns the user ID.
+// Parameters:
+//   - r: HTTP request containing the cookie.
+//   - secretKey: key to verify the token.
+//
+// Returns the user ID or an error if the cookie is missing, token is invalid, or signature fails.
+func GetUserIDFromRequest(r *http.Request, secretKey string) (int64, error) <span class="cov8" title="1">{
+        cookie, err := r.Cookie(cookieName)
+        if err != nil </span><span class="cov8" title="1">{
+                return 0, err
+        }</span>
+        <span class="cov8" title="1">return extractUserIDFromToken(cookie.Value, secretKey)</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Package config provides configuration loading from environment variables, .env file, and command-line flags.
+package config
+
+import (
+        "flag"
+        "log"
+        "os"
+        "time"
+
+        "github.com/caarlos0/env/v11"
+        "github.com/joho/godotenv"
+)
+
+// Config holds all application configuration parameters.
+type Config struct {
+        RunAddr              string        `env:"RUN_ADDRESS"`            // address and port to run server
+        ReadTimeout          time.Duration `env:"READ_TIMEOUT"`           // server read timeout in seconds
+        WriteTimeout         time.Duration `env:"WRITE_TIMEOUT"`          // server write timeout in seconds
+        LoggerLevel          string        `env:"LOGGER_LEVEL"`           // logger level DEBUG / INFO / WARNING / ERROR / FATAL
+        DatabaseURI          string        `env:"DATABASE_URI"`           // database connection url
+        CookieSecret         string        `env:"COOKIE_SECRET"`          // secret for cookie signature
+        MaxParallelWorkers   int           `env:"MAX_PARALLEL_WORKERS"`   // max amount of parallel workers
+        PollInterval         int           `env:"POLL_INTERVAL"`          // external system poll interval
+        MockExternalService  bool          `env:"MOCK_EXTERNAL_STORAGE"`  // mock external storage
+        AccrualSystemAddress string        `env:"ACCRUAL_SYSTEM_ADDRESS"` // loyalty calculation system address
+}
+
+// LoadConfig parses configuration from .env, environment variables, and command-line flags.
+// Returns a pointer to the populated Config struct.
+func LoadConfig() *Config <span class="cov8" title="1">{
+        config := &amp;Config{
+                RunAddr:              ":8080",
+                LoggerLevel:          "INFO",
+                DatabaseURI:          "",
+                CookieSecret:         "",
+                MaxParallelWorkers:   5,
+                AccrualSystemAddress: "",
+                PollInterval:         5,
+                MockExternalService:  false,
+                ReadTimeout:          time.Duration(30) * time.Second,
+                WriteTimeout:         time.Duration(30) * time.Second,
+        }
+        // load env vars
+        err := godotenv.Load()
+        if err != nil </span><span class="cov8" title="1">{
+                if os.IsNotExist(err) </span><span class="cov8" title="1">{
+                        log.Println("No .env file found, using environment variables and flags")
+                }</span> else<span class="cov0" title="0"> {
+                        log.Fatalf("Failed to load .env file: %v", err)
+                }</span>
+        }
+        <span class="cov8" title="1">if err := env.Parse(config); err != nil </span><span class="cov0" title="0">{
+                log.Printf("warning: failed to parse env: %v", err)
+        }</span>
+        // read flags directly to config
+        <span class="cov8" title="1">flag.StringVar(&amp;config.RunAddr, "a", config.RunAddr, "address and port to run server")
+        flag.StringVar(&amp;config.LoggerLevel, "l", config.LoggerLevel, "logger level")
+        flag.StringVar(&amp;config.DatabaseURI, "d", config.DatabaseURI, "database connection url")
+        flag.StringVar(&amp;config.CookieSecret, "s", config.CookieSecret, "cookie signing secret")
+        flag.IntVar(&amp;config.MaxParallelWorkers, "p", config.MaxParallelWorkers, "maximum amount of parallel workers")
+        flag.StringVar(&amp;config.AccrualSystemAddress, "r", config.AccrualSystemAddress, "accrual system base address")
+        flag.IntVar(&amp;config.PollInterval, "i", config.PollInterval, "external service poll interval")
+        flag.BoolVar(&amp;config.MockExternalService, "m", config.MockExternalService, "mock external storage")
+        flag.DurationVar(&amp;config.ReadTimeout, "t", config.ReadTimeout, "server read timeout in seconds")
+        flag.DurationVar(&amp;config.WriteTimeout, "w", config.WriteTimeout, "server write timeout in seconds")
+        // parse flags
+        flag.Parse()
+        return config</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Package db provides database configuration.
+package db
+
+import "time"
+
+// DBConf holds database connection configuration (URL, pool limits, migrations path).
+type DBConf struct {
+        URL             string        // database connection url
+        MaxOpenConns    int           // max amount of opened database connections
+        MaxIdleConns    int           // max amount of idle database connections
+        ConnMaxLifetime time.Duration // max database connection lifetime
+        MigrationsPath  string        // path to folder with migrations files
+}
+
+// NewDBConf creates a DBConf with default connection pool settings and the given database URL.
+// Parameters:
+//   - dbURL: database connection string.
+// Returns a pointer to the initialized DBConf.
+func NewDBConf(dbURL string) *DBConf <span class="cov8" title="1">{
+        return &amp;DBConf{
+                URL:             dbURL,
+                MaxOpenConns:    10,
+                MaxIdleConns:    5,
+                ConnMaxLifetime: 5 * time.Minute,
+                MigrationsPath:  "./migrations",
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Package db provides database connection configuration.
+package db
+
+import (
+        "context"
+        "database/sql"
+        "fmt"
+        "time"
+
+        _ "github.com/jackc/pgx/v5/stdlib"
+)
+
+// Connect establishes a connection to the database using the provided DBConf.
+// Parameters:
+//   - cfg: configuration containing the database URL and pool settings.
+//
+// Returns a ready-to-use sql.DB connection or an error if connection or ping fails.
+func Connect(cfg *DBConf) (*sql.DB, error) <span class="cov0" title="0">{
+        db, err := sql.Open("pgx", cfg.URL)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to open a connection to the DB: %w", err)
+        }</span>
+        <span class="cov0" title="0">db.SetMaxOpenConns(cfg.MaxOpenConns)
+        db.SetMaxIdleConns(cfg.MaxIdleConns)
+        db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+
+        ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+        defer cancel()
+        if err := db.PingContext(ctx); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("connection to the DB is not ready: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return db, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Package handlers provides HTTP handlers for the loyalty system API.
+package handlers
+
+import (
+        "encoding/json"
+        "errors"
+        "io"
+        "log/slog"
+        "net/http"
+
+        "github.com/max-marek-projects/loyalty-system/internal/auth"
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
+        "github.com/max-marek-projects/loyalty-system/internal/models"
+        "github.com/max-marek-projects/loyalty-system/internal/service"
+)
+
+// RegisterUser handles user registration.
+// Reads login/password from JSON, creates a user, and sets an auth cookie.
+func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+
+        var requestData models.RegisterRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;requestData); err != nil </span><span class="cov8" title="1">{
+                logger.Log.Debug("cannot decode request JSON body", slog.Any("error", err))
+                http.Error(w, "Invalid JSON", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">if requestData.Login == "" || requestData.Password == "" </span><span class="cov8" title="1">{
+                http.Error(w, "Login and password are required", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">userID, err := h.service.RegisterUser(r.Context(), requestData)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, service.ErrLoginAlreadyTaken) </span><span class="cov8" title="1">{
+                        http.Error(w, "Login already taken", http.StatusConflict)
+                        return
+                }</span>
+                <span class="cov8" title="1">logger.Log.Error("Failed to register user", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return</span>
+        }
+        <span class="cov8" title="1">if err := auth.SetUserCookie(w, userID, h.secretKey); err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("Failed to set auth cookie", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
+}
+
+// LoginUser handles user login.
+// Validates credentials and sets an auth cookie on success.
+func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        var requestData models.RegisterRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;requestData); err != nil </span><span class="cov8" title="1">{
+                logger.Log.Debug("cannot decode request JSON body", slog.Any("error", err))
+                http.Error(w, "Invalid JSON", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">if requestData.Login == "" || requestData.Password == "" </span><span class="cov8" title="1">{
+                http.Error(w, "Login and password are required", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">userID, err := h.service.LoginUser(r.Context(), requestData)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, service.ErrWrongUsernamePassword) </span><span class="cov8" title="1">{
+                        http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+                        return
+                }</span>
+                <span class="cov8" title="1">logger.Log.Error("Failed to register user", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return</span>
+        }
+        <span class="cov8" title="1">if err := auth.SetUserCookie(w, userID, h.secretKey); err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("Failed to set auth cookie", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
+}
+
+// NewOrder adds a new order number for the authenticated user.
+// Reads the order number from request body and validates it.
+func (h *Handler) NewOrder(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        body, err := io.ReadAll(r.Body)
+        if err != nil || len(body) == 0 </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">if len(body) == 0 </span><span class="cov0" title="0">{
+                http.Error(w, "Empty number", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">added, err := h.service.AddOrder(r.Context(), userID, string(body))
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, service.ErrOrdersConflict) </span><span class="cov0" title="0">{
+                        http.Error(w, "Order number already taken by other user", http.StatusConflict)
+                        return
+                }</span>
+                <span class="cov8" title="1">if errors.Is(err, service.ErrNumberNotValid) </span><span class="cov8" title="1">{
+                        http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
+                        return
+                }</span>
+                <span class="cov0" title="0">logger.Log.Error("Failed add order to storage", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return</span>
+        }
+        <span class="cov8" title="1">if added </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusAccepted)
+                return
+        }</span>
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
+}
+
+// GetUserOrders returns all orders belonging to the authenticated user.
+// Responds with JSON array or 204 No Content if none exist.
+func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">orders, err := h.service.GetAllOrders(r.Context(), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to get user URLs", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">if len(orders) == 0 </span><span class="cov0" title="0">{
+                w.Header().Set("Content-Type", "application/json")
+                w.WriteHeader(http.StatusNoContent)
+                return
+        }</span>
+        <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(orders, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to encode response", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        _, err = w.Write(prettyJSON)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to write response", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+}
+
+// GetBalance returns the current user's loyalty balance.
+// Responds with JSON containing current balance and withdrawn amount.
+func (h *Handler) GetBalance(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">balance, err := h.service.GetBalance(r.Context(), userID)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("failed to get user balance", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(balance, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to encode response", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        _, err = w.Write(prettyJSON)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to write response", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+}
+
+// Withdraw handles a withdrawal request from the user's balance.
+// Validates order number and sum, then processes the withdrawal.
+func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        var withdrawData models.WithdrawRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;withdrawData); err != nil </span><span class="cov0" title="0">{
+                logger.Log.Debug("cannot decode request JSON body", slog.Any("error", err))
+                http.Error(w, "Invalid JSON", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">if withdrawData.Order == "" </span><span class="cov8" title="1">{
+                http.Error(w, "Order number is required", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">if withdrawData.Sum &lt; 0 </span><span class="cov8" title="1">{
+                http.Error(w, "Sum must be positive", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov8" title="1">userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">err = h.service.Withdraw(r.Context(), userID, withdrawData.Order, withdrawData.Sum)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, service.ErrNumberNotValid) </span><span class="cov8" title="1">{
+                        http.Error(w, "Order number not valid", http.StatusUnprocessableEntity)
+                        return
+                }</span>
+                <span class="cov8" title="1">if errors.Is(err, service.ErrInsufficientFunds) </span><span class="cov8" title="1">{
+                        http.Error(w, "User has insufficient funds", http.StatusPaymentRequired)
+                        return
+                }</span>
+                <span class="cov0" title="0">logger.Log.Error("failed to get user balance", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return</span>
+        }
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
+}
+
+// GetUserWithdrawals returns all withdrawal transactions for the authenticated user.
+// Responds with JSON array or 204 No Content if none exist.
+func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        userID, err := auth.GetUserIDFromRequest(r, h.secretKey)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("Failed to get user id from context", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">withdrawals, err := h.service.GetAllWithdrawals(r.Context(), userID)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Log.Error("failed to get user URLs", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">if len(withdrawals) == 0 </span><span class="cov8" title="1">{
+                w.Header().Set("Content-Type", "application/json")
+                w.WriteHeader(http.StatusNoContent)
+                return
+        }</span>
+        <span class="cov8" title="1">prettyJSON, err := json.MarshalIndent(withdrawals, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to encode response", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        _, err = w.Write(prettyJSON)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error("failed to write response", slog.Any("error", err))
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+                return
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package handlers
+
+import (
+        "github.com/max-marek-projects/loyalty-system/internal/service"
+)
+
+// Handler holds dependencies for HTTP handlers: service, worker limits, and cookie secret.
+type Handler struct {
+        service            service.Service
+        maxParallelWorkers int
+        secretKey          string
+}
+
+// NewHandler creates a new Handler instance with the given service, worker limit, and secret key.
+// Parameters:
+//   - service: business logic layer implementation.
+//   - maxParallelWorkers: limit for concurrent background workers.
+//   - secretKey: key used for signing auth cookies.
+//
+// Returns a pointer to the initialized Handler.
+func NewHandler(service service.Service, maxParallelWorkers int, secretKey string) *Handler <span class="cov8" title="1">{
+        return &amp;Handler{service: service, maxParallelWorkers: maxParallelWorkers, secretKey: secretKey}
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Package logger provides a global slog.Logger instance with configurable log level.
+package logger
+
+import (
+        "fmt"
+        "io"
+        "log/slog"
+        "os"
+)
+
+// Log is the global logger instance. Initially a no-op logger.
+var Log *slog.Logger
+
+// Initialize sets up the global logger with the specified log level.
+// Parameters:
+//   - level: log level from slog library.
+//
+// Returns an error if parsing the level or building the logger fails.
+func Initialize(level string) error <span class="cov8" title="1">{
+        var lvl slog.Level
+        switch level </span>{
+        case "DEBUG":<span class="cov0" title="0">
+                lvl = slog.LevelDebug</span>
+        case "INFO":<span class="cov8" title="1">
+                lvl = slog.LevelInfo</span>
+        case "WARN":<span class="cov0" title="0">
+                lvl = slog.LevelWarn</span>
+        case "ERROR":<span class="cov0" title="0">
+                lvl = slog.LevelError</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("failed to initialize logger. error level is invalid: %s", level)</span>
+        }
+        <span class="cov8" title="1">opts := &amp;slog.HandlerOptions{Level: lvl}
+        handler := slog.NewJSONHandler(os.Stdout, opts)
+        Log = slog.New(handler)
+        slog.SetDefault(Log)
+        return nil</span>
+}
+
+// initialize default logger
+func init() <span class="cov8" title="1">{
+        opts := &amp;slog.HandlerOptions{Level: slog.LevelInfo}
+        handler := slog.NewJSONHandler(io.Discard, opts)
+        Log = slog.New(handler)
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package middlewares provides HTTP middleware components for request processing.
+package middlewares
+
+import (
+        "errors"
+        "log/slog"
+        "net/http"
+
+        "github.com/max-marek-projects/loyalty-system/internal/auth"
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
+)
+
+// AuthMiddleware returns a middleware that validates the JWT cookie.
+// Parameters:
+//   - secretKey: key used to verify the JWT signature.
+//
+// Returns a middleware function that rejects requests without a valid cookie.
+func AuthMiddleware(secretKey string) func(http.Handler) http.Handler <span class="cov8" title="1">{
+        return func(next http.Handler) http.Handler </span><span class="cov8" title="1">{
+                return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                        // check if userID is exists and is valid
+                        _, err := auth.GetUserIDFromRequest(r, secretKey)
+                        if err != nil </span><span class="cov8" title="1">{
+                                if !errors.Is(err, http.ErrNoCookie) </span><span class="cov0" title="0">{
+                                        // invalid cookie -&gt; 401 Unauthorized
+                                        logger.Log.Error("Received invalid cookie", slog.Any("error", err))
+                                }</span>
+                                <span class="cov8" title="1">http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+                                return</span>
+                        }
+                        <span class="cov8" title="1">next.ServeHTTP(w, r)</span>
+                })
+        }
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package middlewares
+
+import (
+        "fmt"
+        "log/slog"
+        "net/http"
+        "time"
+
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
+)
+
+// RequestsLogger is a middleware that logs each HTTP request's URI, method, status, duration, and response size.
+// Parameters:
+//   - h: the next http.Handler in the chain.
+//
+// Returns an http.Handler that performs logging before delegating.
+func RequestsLogger(h http.Handler) http.Handler <span class="cov8" title="1">{
+        logFn := func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                start := time.Now()
+
+                responseData := &amp;responseData{
+                        status: 0,
+                        size:   0,
+                }
+                lw := loggingResponseWriter{
+                        ResponseWriter: w,
+                        responseData:   responseData,
+                }
+                h.ServeHTTP(&amp;lw, r)
+
+                duration := time.Since(start)
+
+                logger.Log.Info(
+                        "Processed request",
+                        slog.String("uri", r.RequestURI),
+                        slog.String("method", r.Method),
+                        slog.Int("status", responseData.status),
+                        slog.Duration("duration", duration),
+                        slog.Int("size", responseData.size),
+                )
+        }</span>
+        <span class="cov8" title="1">return http.HandlerFunc(logFn)</span>
+}
+
+type (
+        // responseData holds HTTP response status code and body size for logging.
+        responseData struct {
+                status int
+                size   int
+        }
+
+        // loggingResponseWriter wraps http.ResponseWriter to capture status code and body size.
+        loggingResponseWriter struct {
+                http.ResponseWriter
+                responseData *responseData
+        }
+)
+
+// Write captures the number of bytes written and delegates to the underlying ResponseWriter.
+func (r *loggingResponseWriter) Write(b []byte) (int, error) <span class="cov8" title="1">{
+        size, err := r.ResponseWriter.Write(b)
+        r.responseData.size += size
+        if err != nil </span><span class="cov0" title="0">{
+                return size, fmt.Errorf("failed to write response: %w", err)
+        }</span>
+        <span class="cov8" title="1">return size, err</span>
+}
+
+// WriteHeader captures the status code and delegates to the underlying ResponseWriter.
+func (r *loggingResponseWriter) WriteHeader(statusCode int) <span class="cov8" title="1">{
+        r.ResponseWriter.WriteHeader(statusCode)
+        r.responseData.status = statusCode
+}</span>
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">// Package models defines data structures used across the loyalty system.
+package models
+
+import (
+        "database/sql/driver"
+        "fmt"
+        "strings"
+        "time"
+)
+
+// RegisterRequest represents the JSON payload for user registration and login.
+type RegisterRequest struct {
+        Login    string `json:"login"`
+        Password string `json:"password"`
+}
+
+// UserData holds user credentials for internal storage (login and password hash).
+type UserData struct {
+        Login        string
+        PasswordHash string
+}
+
+// OrderStatus represents the possible states of an order processing.
+type OrderStatus string
+
+const (
+        StatusNEW        OrderStatus = "NEW"        // Order just created, not yet sent to accrual system.
+        StatusPROCESSING OrderStatus = "PROCESSING" // Order is being processed by accrual system.
+        StatusPROCESSED  OrderStatus = "PROCESSED"  // Order finished, accrual added to balance.
+        StatusINVALID    OrderStatus = "INVALID"    // Order number is invalid or processing failed.
+)
+
+// TimeRFC3339 is a wrapper over time.Time that marshals/unmarshals to RFC3339 JSON.
+type TimeRFC3339 struct {
+        time.Time
+}
+
+// MarshalJSON outputs the time in RFC3339 format, or a zero-value sentinel.
+func (ct TimeRFC3339) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
+        if ct.IsZero() </span><span class="cov8" title="1">{
+                return []byte(`"0001-01-01T00:00:00Z"`), nil
+        }</span>
+        <span class="cov8" title="1">return []byte(`"` + ct.Time.Format(time.RFC3339) + `"`), nil</span>
+}
+
+// UnmarshalJSON parses an RFC3339 string into TimeRFC3339.
+func (ct *TimeRFC3339) UnmarshalJSON(data []byte) error <span class="cov8" title="1">{
+        s := strings.Trim(string(data), `"`)
+        if s == "" || s == "null" </span><span class="cov8" title="1">{
+                ct.Time = time.Time{}
+                return nil
+        }</span>
+        <span class="cov8" title="1">t, err := time.Parse(time.RFC3339, s)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">ct.Time = t
+        return nil</span>
+}
+
+// Scan implements sql.Scanner for TimeRFC3339.
+func (ct *TimeRFC3339) Scan(value interface{}) error <span class="cov8" title="1">{
+        if value == nil </span><span class="cov8" title="1">{
+                ct.Time = time.Time{}
+                return nil
+        }</span>
+        <span class="cov8" title="1">switch v := value.(type) </span>{
+        case time.Time:<span class="cov8" title="1">
+                ct.Time = v
+                return nil</span>
+        case string:<span class="cov8" title="1">
+                if v == "" </span><span class="cov8" title="1">{
+                        ct.Time = time.Time{}
+                        return nil
+                }</span>
+                <span class="cov8" title="1">parsed, err := time.Parse(time.RFC3339, v)
+                if err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+                <span class="cov8" title="1">ct.Time = parsed
+                return nil</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("cannot scan %T into TimeRFC3339", value)</span>
+        }
+}
+
+// Value implements driver.Valuer for TimeRFC3339.
+func (ct TimeRFC3339) Value() (driver.Value, error) <span class="cov8" title="1">{
+        if ct.IsZero() </span><span class="cov8" title="1">{
+                return nil, nil
+        }</span>
+        <span class="cov8" title="1">return ct.Time, nil</span>
+}
+
+// OrderData represents an order stored in the database.
+type OrderData struct {
+        ID         int64       `json:"-"`           // Internal database ID.
+        Number     string      `json:"number"`      // Order number (validated by Luhn).
+        Status     OrderStatus `json:"status"`      // Current processing status.
+        Accrual    float64     `json:"accrual"`     // Loyalty points earned.
+        UploadedAt TimeRFC3339 `json:"uploaded_at"` // When the order was added.
+}
+
+// ExternalStatus represents the status of an order in the accrual system.
+type ExternalStatus string
+
+const (
+        ExternalStatusREGISTERED = "REGISTERED" // Order is known but not yet processed.
+        ExternalStatusINVALID    = "INVALID"    // Order number is invalid.
+        ExternalStatusPROCESSING = "PROCESSING" // Order is being processed.
+        ExternalStatusPROCESSED  = "PROCESSED"  // Processing finished, accrual available.
+)
+
+// AccrualResponse is the response from the external accrual system.
+type AccrualResponse struct {
+        Order   string         `json:"order"`   // Order number.
+        Status  ExternalStatus `json:"status"`  // Status from external system.
+        Accrual float64        `json:"accrual"` // Calculated loyalty points.
+}
+
+// BalanceData represents the user's current balance and total withdrawn amount.
+type BalanceData struct {
+        Current   float64 `json:"current"`   // Points available for withdrawal.
+        Withdrawn float64 `json:"withdrawn"` // Total points already withdrawn.
+}
+
+// WithdrawRequest is the JSON payload for a withdrawal request.
+type WithdrawRequest struct {
+        Order string  `json:"order"` // Order number to withdraw against.
+        Sum   float64 `json:"sum"`   // Amount to withdraw.
+}
+
+// WithdrawData represents a withdrawal record stored in the database.
+type WithdrawData struct {
+        Order       string      `json:"order"`        // Order number.
+        Sum         float64     `json:"sum"`          // Amount withdrawn.
+        ProcessedAt TimeRFC3339 `json:"processed_at"` // Timestamp of withdrawal.
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package repository
+
+import (
+        "context"
+        "database/sql"
+        "errors"
+        "fmt"
+        "log/slog"
+
+        "github.com/golang-migrate/migrate/v4"
+        "github.com/max-marek-projects/loyalty-system/internal/config/db"
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
+        "github.com/max-marek-projects/loyalty-system/internal/models"
+
+        _ "github.com/golang-migrate/migrate/v4/database/postgres"
+        _ "github.com/golang-migrate/migrate/v4/source/file"
+)
+
+// dbStorage implements Storage interface using PostgreSQL.
+type dbStorage struct {
+        storage *sql.DB
+        config  *db.DBConf
+}
+
+// NewDBStorage creates a new database storage instance and runs migrations.
+// Parameters:
+//   - dbURL: PostgreSQL connection string.
+//
+// Returns the storage instance or an error if connection or migration fails.
+func NewDBStorage(dbURL string) (*dbStorage, error) <span class="cov0" title="0">{
+        config := db.NewDBConf(dbURL)
+        storage, err := db.Connect(config)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create DB storage: %w", err)
+        }</span>
+        <span class="cov0" title="0">dbs := &amp;dbStorage{
+                storage: storage,
+                config:  config,
+        }
+        err = dbs.runMigrations()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create DB storage: %w", err)
+        }</span>
+        <span class="cov0" title="0">return dbs, nil</span>
+}
+
+// runMigrations applies database migrations from the configured path.
+func (dbs *dbStorage) runMigrations() error <span class="cov0" title="0">{
+        logger.Log.Info("Running migrations", slog.String("path", dbs.config.MigrationsPath))
+        m, err := migrate.New(
+                "file://"+dbs.config.MigrationsPath,
+                dbs.config.URL,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to run migrations: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer m.Close()
+        if err := m.Up(); err != nil &amp;&amp; !errors.Is(err, migrate.ErrNoChange) </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to run migrations: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// RegisterUser inserts a new user into the database.
+// Parameters:
+//   - userData: login and hashed password.
+//
+// Returns the new user ID or error (ErrAlreadyInStorage if login exists).
+func (dbs *dbStorage) RegisterUser(ctx context.Context, userData models.UserData) (int64, error) <span class="cov8" title="1">{
+        var userID int64
+        query := `--sql
+        INSERT INTO users (username, password_hash)
+                VALUES ($1, $2)
+                ON CONFLICT (username) DO NOTHING
+                RETURNING id;
+        `
+        err := dbs.storage.QueryRowContext(ctx, query, userData.Login, userData.PasswordHash).Scan(&amp;userID)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                        return 0, ErrAlreadyInStorage
+                }</span>
+                <span class="cov8" title="1">return 0, fmt.Errorf("failed to add user to storage: %w", err)</span>
+        }
+        <span class="cov8" title="1">return userID, nil</span>
+}
+
+// CheckUser retrieves user ID and hashed password by login.
+// Returns ErrUserNotFound if the login does not exist.
+func (dbs *dbStorage) CheckUser(ctx context.Context, username string) (int64, string, error) <span class="cov8" title="1">{
+        var userID int64
+        var hashedPassword string
+        query := `--sql
+        SELECT id, password_hash FROM users
+                WHERE username = $1;
+        `
+        err := dbs.storage.QueryRowContext(ctx, query, username).Scan(&amp;userID, &amp;hashedPassword)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                        return 0, "", ErrUserNotFound
+                }</span>
+                <span class="cov8" title="1">return 0, "", fmt.Errorf("failed to get user from storage by id: %w", err)</span>
+        }
+        <span class="cov8" title="1">return userID, hashedPassword, nil</span>
+}
+
+// AddOrder inserts a new order for a user, or returns existing order conflict.
+// Returns ErrAlreadyInStorage if order already belongs to the same user,
+// ErrStorageConflict if order belongs to another user.
+func (dbs *dbStorage) AddOrder(ctx context.Context, userID int64, orderNumber string) error <span class="cov8" title="1">{
+        var orderID int64
+        query := `--sql
+        INSERT INTO orders (number, user_id, status)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (number) DO NOTHING
+                RETURNING id;
+        `
+        err := dbs.storage.QueryRowContext(ctx, query, orderNumber, userID, models.StatusNEW).Scan(&amp;orderID)
+        if err == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">if !errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to add order to storage: %w", err)
+        }</span>
+        <span class="cov8" title="1">var recordUserID int64
+        query = `--sql
+                SELECT user_id FROM orders 
+                WHERE number = $1;
+        `
+        err = dbs.storage.QueryRowContext(ctx, query, orderNumber).Scan(&amp;recordUserID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to select order data from storage: %w", err)
+        }</span>
+        <span class="cov8" title="1">if recordUserID != userID </span><span class="cov8" title="1">{
+                return ErrStorageConflict
+        }</span>
+        <span class="cov8" title="1">return ErrAlreadyInStorage</span>
+}
+
+// GetAllOrders returns all orders for a given user, ordered by upload time descending.
+func (dbs *dbStorage) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov8" title="1">{
+        query := `SELECT id, number, status, accrual, uploaded_at FROM orders WHERE user_id = $1 ORDER BY uploaded_at DESC`
+        rows, err := dbs.storage.QueryContext(ctx, query, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">if err = rows.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+        var res []models.OrderData
+        for rows.Next() </span><span class="cov8" title="1">{
+                var orderData models.OrderData
+                if err := rows.Scan(&amp;orderData.ID, &amp;orderData.Number, &amp;orderData.Status, &amp;orderData.Accrual, &amp;orderData.UploadedAt); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">res = append(res, orderData)</span>
+        }
+        <span class="cov8" title="1">return res, nil</span>
+}
+
+// GetBalance returns the user's current balance and total withdrawn amount.
+func (dbs *dbStorage) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) <span class="cov8" title="1">{
+        balanceData := &amp;models.BalanceData{}
+        query := `SELECT balance, withdrawn FROM users WHERE id = $1`
+        err := dbs.storage.QueryRowContext(ctx, query, userID).Scan(&amp;balanceData.Current, &amp;balanceData.Withdrawn)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">return balanceData, nil</span>
+}
+
+// Withdraw processes a withdrawal using a transaction.
+// Returns ErrInsufficientFunds if balance is insufficient.
+func (dbs *dbStorage) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error <span class="cov0" title="0">{
+        tx, err := dbs.storage.BeginTx(ctx, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to start database transaction: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer tx.Rollback()
+        var currentBalance float64
+        err = tx.QueryRowContext(ctx,
+                `SELECT balance FROM users WHERE id = $1 FOR UPDATE`,
+                userID,
+        ).Scan(&amp;currentBalance)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov0" title="0">{
+                        return ErrUserNotFound
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to get user balance: %w", err)</span>
+        }
+        <span class="cov0" title="0">if currentBalance &lt; sum </span><span class="cov0" title="0">{
+                return ErrInsufficientFunds
+        }</span>
+        <span class="cov0" title="0">_, err = tx.ExecContext(ctx,
+                `UPDATE users 
+                 SET balance = balance - $1,
+                    withdrawn = withdrawn + $1
+                 WHERE id = $2`,
+                sum, userID,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update user balance: %w", err)
+        }</span>
+        <span class="cov0" title="0">_, err = tx.ExecContext(ctx,
+                `INSERT INTO withdrawals (user_id, order_number, sum, processed_at)
+                 VALUES ($1, $2, $3, NOW())`,
+                userID, orderNumber, sum,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to insert withdrawal: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if err := tx.Commit(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to commit transaction: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// GetAllWithdrawals returns all withdrawal records for a user.
+func (dbs *dbStorage) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) <span class="cov8" title="1">{
+        query := `SELECT order_number, sum, processed_at FROM withdrawals WHERE user_id = $1 ORDER BY processed_at DESC`
+        rows, err := dbs.storage.QueryContext(ctx, query, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">if err = rows.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+        var res []models.WithdrawData
+        for rows.Next() </span><span class="cov8" title="1">{
+                var withdrawal models.WithdrawData
+                if err := rows.Scan(&amp;withdrawal.Order, &amp;withdrawal.Sum, &amp;withdrawal.ProcessedAt); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">res = append(res, withdrawal)</span>
+        }
+        <span class="cov8" title="1">return res, nil</span>
+}
+
+// MarkAllProcessingAsNew resets all orders with status PROCESSING to NEW (e.g., after restart).
+func (dbs *dbStorage) MarkAllProcessingAsNew(ctx context.Context) error <span class="cov8" title="1">{
+        query := `UPDATE orders
+                SET status = $1
+                WHERE status = $2;
+        `
+        result, err := dbs.storage.ExecContext(ctx, query, models.StatusNEW, models.StatusPROCESSING)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to reset all statuses: %v", err)
+        }</span>
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("could not get affected rows: %v", err)
+        }</span>
+        <span class="cov8" title="1">logger.Log.Info("Successfully reset statuses.", slog.Int64("rowsAffected", rowsAffected))
+        return nil</span>
+}
+
+// FindAndClaimNewOrders selects orders with status NEW, sets them to PROCESSING, and returns them.
+func (dbs *dbStorage) FindAndClaimNewOrders(ctx context.Context) ([]models.OrderData, error) <span class="cov8" title="1">{
+        query := `UPDATE orders
+                SET status = $1
+                WHERE status = $2
+                RETURNING id, number, status, accrual, uploaded_at;
+        `
+        rows, err := dbs.storage.QueryContext(ctx, query, models.StatusPROCESSING, models.StatusNEW)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">if err = rows.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get all orders from database: %v", err)
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+        var res []models.OrderData
+        for rows.Next() </span><span class="cov8" title="1">{
+                var orderData models.OrderData
+                if err := rows.Scan(&amp;orderData.ID, &amp;orderData.Number, &amp;orderData.Status, &amp;orderData.Accrual, &amp;orderData.UploadedAt); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">res = append(res, orderData)</span>
+        }
+        <span class="cov8" title="1">return res, nil</span>
+}
+
+// UpdateOrderStatus changes the status of an order by its ID.
+func (dbs *dbStorage) UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) error <span class="cov8" title="1">{
+        query := `UPDATE orders
+                SET status = $1
+                WHERE id = $2;
+        `
+        result, err := dbs.storage.ExecContext(ctx, query, status, orderID)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to update status: %v", err)
+        }</span>
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("could not get affected rows: %v", err)
+        }</span>
+        <span class="cov8" title="1">logger.Log.Info("Successfully reset statuses.", slog.Int64("rowsAffected", rowsAffected))
+        return nil</span>
+}
+
+// ProcessOrderAccrual updates order status to PROCESSED, adds accrual to user balance (transactional).
+func (dbs *dbStorage) ProcessOrderAccrual(ctx context.Context, orderID int64, accrual float64) (err error) <span class="cov8" title="1">{
+        // start transaction
+        tx, err := dbs.storage.BeginTx(ctx, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to begin transaction: %w", err)
+        }</span>
+        // rollback on error
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                if err != nil </span><span class="cov8" title="1">{
+                        _ = tx.Rollback()
+                }</span>
+        }()
+        // update order status
+        <span class="cov8" title="1">var userID int64
+        queryOrder := `UPDATE orders 
+        SET status = $1, accrual = $2
+        WHERE id = $3 RETURNING user_id`
+        err = tx.QueryRowContext(ctx, queryOrder, models.StatusPROCESSED, accrual, orderID).Scan(&amp;userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("update order failed: %w", err)
+        }</span>
+        // update user balance
+        <span class="cov8" title="1">queryUser := `UPDATE users 
+        SET balance = balance + $1 
+        WHERE id = $2`
+        resUser, err := tx.ExecContext(ctx, queryUser, accrual, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("update user balance failed: %w", err)
+        }</span>
+        <span class="cov8" title="1">rowsAffectedUser, err := resUser.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get user rows affected: %w", err)
+        }</span>
+        <span class="cov8" title="1">if rowsAffectedUser == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("user %d not found", userID)
+        }</span>
+        // commit transaction
+        <span class="cov8" title="1">if err := tx.Commit(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("commit transaction failed: %w", err)
+        }</span>
+        <span class="cov8" title="1">logger.Log.Info("Order accrual processed",
+                slog.Int64("orderID", orderID),
+                slog.Int64("userID", userID),
+                slog.Float64("accrual", accrual))
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">// Package server provides HTTP server setup with routing and middleware.
+package server
+
+import (
+        "log/slog"
+        "net/http"
+        "time"
+
+        "github.com/go-chi/chi/v5"
+        "github.com/go-chi/chi/v5/middleware"
+        "github.com/max-marek-projects/loyalty-system/internal/handlers"
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
+        "github.com/max-marek-projects/loyalty-system/internal/middlewares"
+)
+
+// Server wraps http.Server with custom configuration.
+type Server struct {
+        http.Server
+}
+
+// NewServer creates a new HTTP server with routes and middlewares.
+// Parameters:
+//   - addr: listening address (e.g., ":8080").
+//   - h: handler instance with business logic.
+//   - readTimeout, writeTimeout: timeouts for server.
+//   - cookieSecret: secret key for auth middleware.
+//
+// Returns a configured Server pointer.
+func NewServer(addr string, h *handlers.Handler, readTimeout, writeTimeout time.Duration, cookieSecret string) *Server <span class="cov8" title="1">{
+        r := chi.NewRouter()
+
+        //middlewares
+        r.Use(middleware.Recoverer)
+        r.Use(middlewares.RequestsLogger)
+
+        r.Route("/api/user", func(api chi.Router) </span><span class="cov8" title="1">{
+                // public endpoints
+                api.Post("/register", h.RegisterUser)
+                api.Post("/login", h.LoginUser)
+                // protected endpoints
+                api.Group(func(protected chi.Router) </span><span class="cov8" title="1">{
+                        protected.Use(middlewares.AuthMiddleware(cookieSecret))
+                        protected.Get("/orders", h.GetUserOrders)
+                        protected.Post("/orders", h.NewOrder)
+                        protected.Get("/balance", h.GetBalance)
+                        protected.Post("/balance/withdraw", h.Withdraw)
+                        protected.Get("/withdrawals", h.GetUserWithdrawals)
+                }</span>)
+        })
+
+        <span class="cov8" title="1">return &amp;Server{
+                Server: http.Server{
+                        Addr:         addr,
+                        Handler:      r,
+                        ReadTimeout:  readTimeout,
+                        WriteTimeout: writeTimeout,
+                },
+        }</span>
+}
+
+// ListenAndServe starts the HTTP server and logs the address.
+// Returns an error if the server cannot start.
+func (s *Server) ListenAndServe() error <span class="cov8" title="1">{
+        logger.Log.Info("Starting server", slog.String("address", s.Addr))
+        return s.Server.ListenAndServe()
+}</span>
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package service
+
+import (
+        "errors"
+        "fmt"
+        "time"
+)
+
+// ErrLoginAlreadyTaken is returned when registration login already exists.
+var ErrLoginAlreadyTaken = errors.New("login already taken by other user")
+
+// ErrWrongUsernamePassword is returned when login credentials are invalid.
+var ErrWrongUsernamePassword = errors.New("wrong username or password")
+
+// ErrOrdersConflict is returned when an order belongs to another user.
+var ErrOrdersConflict = errors.New("orders conflicts with other user")
+
+// ErrNumberNotValid is returned when order number fails Luhn validation.
+var ErrNumberNotValid = errors.New("order number not valid by Luhn algorithm")
+
+// ErrInsufficientFunds is returned when withdrawal exceeds available balance.
+var ErrInsufficientFunds = errors.New("user has insufficient funds")
+
+// ErrOrderNotYetProcessed is returned when the accrual system indicates the order is not ready.
+type ErrOrderNotYetProcessed struct {
+        Err        error
+        RetryAfter time.Duration
+}
+
+func (e *ErrOrderNotYetProcessed) Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf("Order not yet processed: %v. Retry after: %v", e.Err, e.RetryAfter)
+}</span>
+
+func (e *ErrOrderNotYetProcessed) Unwrap() error <span class="cov8" title="1">{
+        return e.Err
+}</span>
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package service
+
+import (
+        "context"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "io"
+        "log/slog"
+        "net/http"
+        "time"
+
+        "math/rand/v2"
+
+        "github.com/max-marek-projects/loyalty-system/internal/logger"
+        "github.com/max-marek-projects/loyalty-system/internal/models"
+        "github.com/max-marek-projects/loyalty-system/internal/repository"
+        "github.com/max-marek-projects/loyalty-system/internal/utils"
+        "golang.org/x/crypto/bcrypt"
+        "golang.org/x/sync/errgroup"
+)
+
+//go:generate mockery --name=Service --output=../handlers --outpkg=handlers --filename=service_mock_test.go --with-expecter
+//go:generate mockery --name=Service --output=../server --outpkg=server --filename=service_mock_test.go --with-expecter
+
+// Service defines the business logic interface for the loyalty system.
+type Service interface {
+        RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
+        LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error)
+        AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error)
+        GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error)
+        GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error)
+        Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error
+        GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error)
+        StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool)
+}
+
+// NewEndpointService creates a service instance with the given storage and accrual system address.
+// Parameters:
+//   - storage: repository implementation.
+//   - accrualSystemAddress: base URL of the external accrual system.
+//
+// Returns the service or an error if resetting statuses fails.
+func NewEndpointService(storage repository.Storage, accrualSystemAddress string) (Service, error) <span class="cov0" title="0">{
+        service := &amp;endpointService{storage: storage, accrualSystemAddress: accrualSystemAddress, httpClient: &amp;http.Client{Timeout: 10 * time.Second}}
+        err := service.storage.MarkAllProcessingAsNew(context.Background())
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">return service, nil</span>
+}
+
+type endpointService struct {
+        storage              repository.Storage
+        accrualSystemAddress string
+        httpClient           *http.Client
+}
+
+// RegisterUser creates a new user with hashed password.
+// Returns ErrorLoginAlreadyTaken if login already exists.
+func (service *endpointService) RegisterUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov8" title="1">{
+        hashed, err := bcrypt.GenerateFromPassword([]byte(userData.Password), bcrypt.DefaultCost)
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("failed to hash password: %v", err)
+        }</span>
+        <span class="cov8" title="1">hashedUserData := models.UserData{Login: userData.Login, PasswordHash: string(hashed)}
+        userID, err := service.storage.RegisterUser(ctx, hashedUserData)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repository.ErrAlreadyInStorage) </span><span class="cov8" title="1">{
+                        return 0, ErrLoginAlreadyTaken
+                }</span>
+                <span class="cov8" title="1">return 0, fmt.Errorf("failed to register user in storage: %v", err)</span>
+        }
+        <span class="cov8" title="1">return userID, nil</span>
+}
+
+// LoginUser validates credentials and returns user ID.
+// Returns ErrorWrongUsernamePassword if login or password is incorrect.
+func (service *endpointService) LoginUser(ctx context.Context, userData models.RegisterRequest) (int64, error) <span class="cov8" title="1">{
+        userID, hashedPassword, err := service.storage.CheckUser(ctx, userData.Login)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repository.ErrUserNotFound) </span><span class="cov8" title="1">{
+                        return 0, ErrWrongUsernamePassword
+                }</span>
+                <span class="cov8" title="1">return 0, fmt.Errorf("failed to check user in storage: %v", err)</span>
+        }
+        <span class="cov8" title="1">err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(userData.Password))
+        if err != nil </span><span class="cov8" title="1">{
+                return 0, ErrWrongUsernamePassword
+        }</span>
+        <span class="cov8" title="1">return userID, nil</span>
+}
+
+// AddOrder validates order number via Luhn and stores it.
+// Returns (true, nil) if new order added, (false, nil) if order already exists for this user,
+// or error (ErrorNumberNotValid, ErrorOrdersConflict).
+func (service *endpointService) AddOrder(ctx context.Context, userID int64, orderNumber string) (bool, error) <span class="cov8" title="1">{
+        numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
+        if !numberValid </span><span class="cov8" title="1">{
+                return false, ErrNumberNotValid
+        }</span>
+        <span class="cov8" title="1">err := service.storage.AddOrder(ctx, userID, orderNumber)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repository.ErrAlreadyInStorage) </span><span class="cov8" title="1">{
+                        return false, nil
+                }</span>
+                <span class="cov8" title="1">if errors.Is(err, repository.ErrStorageConflict) </span><span class="cov8" title="1">{
+                        return false, ErrOrdersConflict
+                }</span>
+                <span class="cov8" title="1">return false, fmt.Errorf("failed to check user in storage: %v", err)</span>
+        }
+        <span class="cov8" title="1">return true, nil</span>
+}
+
+// GetAllOrders returns all orders belonging to a user.
+func (service *endpointService) GetAllOrders(ctx context.Context, userID int64) ([]models.OrderData, error) <span class="cov8" title="1">{
+        orders, err := service.storage.GetAllOrders(ctx, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get orders from storage: %v", err)
+        }</span>
+        <span class="cov8" title="1">return orders, nil</span>
+}
+
+// GetBalance returns the user's current balance and total withdrawn.
+func (service *endpointService) GetBalance(ctx context.Context, userID int64) (*models.BalanceData, error) <span class="cov8" title="1">{
+        balance, err := service.storage.GetBalance(ctx, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get balance from storage: %v", err)
+        }</span>
+        <span class="cov8" title="1">return balance, nil</span>
+}
+
+// Withdraw processes a withdrawal after Luhn validation.
+// Returns ErrorNumberNotValid or ErrInsufficientFunds.
+func (service *endpointService) Withdraw(ctx context.Context, userID int64, orderNumber string, sum float64) error <span class="cov8" title="1">{
+        numberValid := utils.ValidateLuhnAlgorithm(orderNumber)
+        if !numberValid </span><span class="cov8" title="1">{
+                return ErrNumberNotValid
+        }</span>
+        <span class="cov8" title="1">err := service.storage.Withdraw(ctx, userID, orderNumber, sum)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repository.ErrInsufficientFunds) </span><span class="cov8" title="1">{
+                        return ErrInsufficientFunds
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("failed to withdraw in storage: %v", err)</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetAllWithdrawals returns all withdrawal records for a user.
+func (service *endpointService) GetAllWithdrawals(ctx context.Context, userID int64) ([]models.WithdrawData, error) <span class="cov8" title="1">{
+        withdrawals, err := service.storage.GetAllWithdrawals(ctx, userID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get orders from storage: %v", err)
+        }</span>
+        <span class="cov8" title="1">return withdrawals, nil</span>
+}
+
+// StartOrderProcessor launches background workers to poll the accrual system.
+// Parameters:
+//   - maxParallelWorkers: number of concurrent workers.
+//   - pollInterval: seconds between scanning for new orders.
+//   - mockExternalService: if true, uses mock accrual logic.
+func (service *endpointService) StartOrderProcessor(ctx context.Context, maxParallelWorkers int, pollInterval int, mockExternalService bool) <span class="cov8" title="1">{
+        // errorgroup for all workers to properly finish before exit
+        g, gctx := errgroup.WithContext(ctx)
+        g.SetLimit(maxParallelWorkers)
+        // prepared function to add order to queue
+        var submit func(models.OrderData)
+        submit = func(order models.OrderData) </span><span class="cov0" title="0">{
+                g.Go(func() error </span><span class="cov0" title="0">{
+                        return service.worker(gctx, order, pollInterval, mockExternalService, submit)
+                }</span>)
+        }
+        // ticker to parse new orders
+        <span class="cov8" title="1">ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+        defer ticker.Stop()
+        logger.Log.Info("Order processor started", slog.Int("parallelWorkers", maxParallelWorkers), slog.String("accrualSystem", service.accrualSystemAddress))
+        // main loop
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-gctx.Done():<span class="cov8" title="1">
+                        logger.Log.Info("Order processor shutting down...")
+                        if err := g.Wait(); err != nil </span><span class="cov0" title="0">{
+                                logger.Log.Error("Order processor finished with error", slog.Any("error", err))
+                        }</span> else<span class="cov8" title="1"> {
+                                logger.Log.Info("Order processor stopped.")
+                        }</span>
+                        <span class="cov8" title="1">return</span>
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        orders, err := service.storage.FindAndClaimNewOrders(gctx)
+                        if err != nil </span><span class="cov0" title="0">{
+                                logger.Log.Error("Failed to fetch new orders", slog.Any("error", err))
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">for _, order := range orders </span><span class="cov0" title="0">{
+                                orderCopy := order
+                                submit(orderCopy)
+                        }</span>
+                }
+        }
+}
+
+// worker processes orders from the channel by calling the accrual system.
+func (service *endpointService) worker(
+        ctx context.Context,
+        order models.OrderData,
+        pollInterval int,
+        mockExternalService bool,
+        submit func(models.OrderData),
+) error <span class="cov0" title="0">{
+        result, err := service.parseAccrualSystem(ctx, order, pollInterval, mockExternalService)
+        if err != nil </span><span class="cov0" title="0">{
+                var errorWithRetry *ErrOrderNotYetProcessed
+                if errors.As(err, &amp;errorWithRetry) </span><span class="cov0" title="0">{
+                        // temporary error, planning to retry later
+                        service.scheduleRetry(ctx, order, errorWithRetry.RetryAfter, submit)
+                        return nil
+                }</span>
+                <span class="cov0" title="0">if err := service.storage.UpdateOrderStatus(ctx, order.ID, models.StatusINVALID); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        }
+
+        <span class="cov0" title="0">switch result.Status </span>{
+        case models.ExternalStatusINVALID:<span class="cov0" title="0">
+                if err := service.storage.UpdateOrderStatus(ctx, order.ID, models.StatusINVALID); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        case models.ExternalStatusPROCESSED:<span class="cov0" title="0">
+                if err := service.storage.ProcessOrderAccrual(ctx, order.ID, result.Accrual); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error("Failed to update order status", slog.Int64("orderID", order.ID), slog.Any("error", err))
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        default:<span class="cov0" title="0">
+                return fmt.Errorf("unknown status: %s", result.Status)</span>
+        }
+}
+
+// scheduleRetry runs goroutine that returns order in channel
+func (service *endpointService) scheduleRetry(ctx context.Context, order models.OrderData, delay time.Duration, submit func(models.OrderData)) <span class="cov0" title="0">{
+        go func() </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-ctx.Done():<span class="cov0" title="0">
+                        return</span>
+                case &lt;-time.After(delay):<span class="cov0" title="0">
+                        select </span>{
+                        case &lt;-ctx.Done():<span class="cov0" title="0">
+                                return</span>
+                        default:<span class="cov0" title="0">
+                                submit(order)</span>
+                        }
+                }
+        }()
+}
+
+// parseAccrualSystem contacts external system or mock, returns accrual response.
+// Returns ErrorOrderNotYetProcessed if order is not ready and should be retried.
+func (service *endpointService) parseAccrualSystem(
+        ctx context.Context,
+        order models.OrderData,
+        pollInterval int,
+        mockExternalService bool,
+) (*models.AccrualResponse, error) <span class="cov0" title="0">{
+        if mockExternalService </span><span class="cov0" title="0">{
+                //random accrual
+                accrual := rand.Float64() * 500
+                return &amp;models.AccrualResponse{Order: order.Number, Status: models.ExternalStatusPROCESSED, Accrual: accrual}, nil
+        }</span>
+        // create URL
+        <span class="cov0" title="0">url := fmt.Sprintf("%s/api/orders/%s", service.accrualSystemAddress, order.Number)
+        // create HTTP request with context
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+        // execute request
+        <span class="cov0" title="0">resp, err := service.httpClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, context.DeadlineExceeded) </span><span class="cov0" title="0">{
+                        retryAfter := time.Duration(pollInterval) * time.Second
+                        logger.Log.Debug("timeout received", slog.Duration("next attempt in", retryAfter))
+                        return nil, &amp;ErrOrderNotYetProcessed{fmt.Errorf("timeout received: %w", err), retryAfter}
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("request failed: %w", err)</span>
+        }
+        <span class="cov0" title="0">defer resp.Body.Close()
+        // analyze status codes
+        switch resp.StatusCode </span>{
+        case http.StatusOK:<span class="cov0" title="0"> // 200
+                var result models.AccrualResponse
+                if err := json.NewDecoder(resp.Body).Decode(&amp;result); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to decode response: %w", err)
+                }</span>
+                <span class="cov0" title="0">if result.Status == models.ExternalStatusREGISTERED || result.Status == models.ExternalStatusPROCESSING </span><span class="cov0" title="0">{
+                        retryAfter := time.Duration(pollInterval) * time.Second
+                        logger.Log.Debug("status shows not yet processed", slog.String("status", string(result.Status)), slog.Duration("next attempt in", retryAfter))
+                        return nil, &amp;ErrOrderNotYetProcessed{fmt.Errorf("status shows not yet processed"), retryAfter}
+                }</span>
+                <span class="cov0" title="0">return &amp;result, nil</span>
+        case http.StatusNoContent:<span class="cov0" title="0"> // 204
+                retryAfter := time.Duration(pollInterval) * time.Second
+                logger.Log.Debug("status code shows not yet registered", slog.Int("status code", resp.StatusCode), slog.Duration("next attempt in", retryAfter))
+                return nil, &amp;ErrOrderNotYetProcessed{fmt.Errorf("status code shows not yet registered"), retryAfter}</span>
+
+        case http.StatusTooManyRequests:<span class="cov0" title="0"> // 429
+                retryAfterStr := resp.Header.Get("Retry-After")
+                var retryAfter time.Duration
+                if retryAfterStr != "" </span><span class="cov0" title="0">{
+                        retryAfter = utils.ParseRetryAfter(retryAfterStr)
+                }</span> else<span class="cov0" title="0"> {
+                        retryAfter = time.Duration(pollInterval) * time.Second
+                }</span>
+                <span class="cov0" title="0">return nil, &amp;ErrOrderNotYetProcessed{fmt.Errorf("status code shows too many requests"), retryAfter}</span>
+
+        case http.StatusInternalServerError:<span class="cov0" title="0"> // 500
+                body, _ := io.ReadAll(resp.Body)
+                return nil, fmt.Errorf("internal server error: %s", body)</span>
+
+        default:<span class="cov0" title="0">
+                body, _ := io.ReadAll(resp.Body)
+                return nil, fmt.Errorf("unexpected status code %d, body: %s", resp.StatusCode, body)</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">// Package utils provides helper functions for validation and parsing.
+package utils
+
+import (
+        "strings"
+)
+
+// ValidateLuhnAlgorithm checks if a number string satisfies the Luhn algorithm (mod 10).
+// Returns true for valid credit card‑style numbers, false otherwise.
+func ValidateLuhnAlgorithm(number string) bool <span class="cov8" title="1">{
+        number = strings.ReplaceAll(number, " ", "")
+        if len(number) &lt; 2 </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">sum := 0
+        double := false
+        for i := len(number) - 1; i &gt;= 0; i-- </span><span class="cov8" title="1">{
+                ch := number[i]
+                if ch &lt; '0' || ch &gt; '9' </span><span class="cov8" title="1">{
+                        return false
+                }</span>
+                <span class="cov8" title="1">digit := int(ch - '0')
+                if double </span><span class="cov8" title="1">{
+                        digit *= 2
+                        if digit &gt; 9 </span><span class="cov8" title="1">{
+                                digit -= 9
+                        }</span>
+                }
+                <span class="cov8" title="1">sum += digit
+                double = !double</span>
+        }
+        <span class="cov8" title="1">return sum%10 == 0</span>
+}
+</pre>
+		
+		<pre class="file" id="file16" style="display: none">package utils
+
+import (
+        "strconv"
+        "time"
+)
+
+// ParseRetryAfter converts a Retry-After header value (seconds or RFC1123 date) into a time.Duration.
+// Returns 0 if parsing fails or if the duration is in the past.
+func ParseRetryAfter(headerVal string) time.Duration <span class="cov8" title="1">{
+        if headerVal == "" </span><span class="cov8" title="1">{
+                return 0
+        }</span>
+        // Format 1: as delta-seconds (integer)
+        <span class="cov8" title="1">if seconds, err := strconv.Atoi(headerVal); err == nil </span><span class="cov8" title="1">{
+                if seconds &lt; 0 </span><span class="cov8" title="1">{
+                        return 0
+                }</span>
+                <span class="cov8" title="1">return time.Duration(seconds) * time.Second</span>
+        }
+        // Format 2: as an HTTP-date (RFC1123)
+        <span class="cov8" title="1">if targetTime, err := time.Parse(time.RFC1123, headerVal); err == nil </span><span class="cov8" title="1">{
+                waitDuration := time.Until(targetTime)
+                if waitDuration &lt; 0 </span><span class="cov8" title="1">{
+                        return 0
+                }</span>
+                <span class="cov8" title="1">return waitDuration</span>
+        }
+
+        <span class="cov8" title="1">return 0</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
